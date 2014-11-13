@@ -24,4 +24,17 @@ public class EnvironmentBuilderVisitor extends GJVoidDepthFirst<Environment>{
 
     }
 
+    public void visit(MainClass m, Environment env) {
+        String class_name;
+        VaporClass declared_class;
+
+        class_name = EnvironmentUtil.classname(m);
+        declared_class = new VaporClass(class_name);
+        MethodType main = new MethodType("main");
+        declared_class.addMethod(main, "main");
+
+        env.addClass(declared_class);
+
+    }
+
 }
