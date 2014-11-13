@@ -1,5 +1,6 @@
 import code_generation.CodeGenerationUtil;
 import code_generation.CodeGenerationVisitor;
+import code_generation.EnvironmentTemporaryPair;
 import environment.Environment;
 import environment.EnvironmentBuilderVisitor;
 import environment.VaporClass;
@@ -41,7 +42,7 @@ public class J2V {
                         // Output static data
                         CodeGenerationUtil.outputVtables(env);
                         CodeGenerationVisitor cgen = new CodeGenerationVisitor();
-                        g.accept(cgen, env);
+                        g.accept(cgen, new EnvironmentTemporaryPair(env));
                     }
                     catch (ParseException e) {
                         System.out.println(e.toString());

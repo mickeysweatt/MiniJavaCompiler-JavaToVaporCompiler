@@ -1,5 +1,6 @@
 package environment;
 
+import sun.org.mozilla.javascript.ast.VariableDeclaration;
 import syntaxtree.*;
 
 import java.util.*;
@@ -14,8 +15,7 @@ public class EnvironmentBuilderUtil {
         for (Node n : varList) {
             VarDeclaration var = (VarDeclaration) n;
             String var_name = EnvironmentUtil.identifierToString(var.f1);
-            Variable v = new Variable(var_name);
-            c.addInstanceVariable(v);
+            c.addInstanceVariable(var_name);
         }
     }
 
@@ -46,6 +46,54 @@ public class EnvironmentBuilderUtil {
             }
         }
         return vars;
+    }
+
+    public static Environment buildLocalEnvironment(MainClass m, Environment env)
+    {
+        Environment localEnv = new Environment(env);
+        String class_name = EnvironmentUtil.classname(m);
+        VaporClass curr_class = localEnv.getClass(class_name);
+
+        for (Variable v: curr_class.getVariables()) {
+            localEnv.addVarsInScope(v);
+        }
+
+        for (Node n: m.f14.nodes) {
+            VarDeclaration var = (VarDeclaration)n;
+            String var_name = EnvironmentUtil.identifierToString(var.f1);
+            localEnv.addVarsInScope(new Variable(var_name, var_name));
+        }
+
+        return localEnv;
+    }
+
+    public static Environment buildLocalEnvironment(ClassDeclaration d, Environment env)
+    {
+        Environment localEnv = new Environment(env);
+        String class_name = EnvironmentUtil.classname(d);
+        VaporClass curr_class = localEnv.getClass(class_name);
+
+        for (Variable v: curr_class.getVariables()) {
+            localEnv.addVarsInScope(v);
+        }
+        return localEnv;
+    }
+
+    public static Environment buildLocalEnvironment(MethodDeclaration d, MethodType m, Environment env)
+    {
+        Environment localEnv = new Environment(env);
+        for (String parameter_name : m.getParameters()) {
+            // for a parameter the location is the name
+            localEnv.addVarsInScope(new Variable(parameter_name, parameter_name));
+        }
+
+        for (Node n: d.f7.nodes)
+        {
+            VarDeclaration v = (VarDeclaration)n;
+            String var_name = EnvironmentUtil.identifierToString(v.f1);
+            localEnv.addVarsInScope(new Variable(var_name, var_name));
+        }
+        return localEnv;
     }
 }
 

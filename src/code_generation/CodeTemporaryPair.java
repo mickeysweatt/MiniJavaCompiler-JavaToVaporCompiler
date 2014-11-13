@@ -8,6 +8,7 @@ import java.util.Map;
 public class CodeTemporaryPair {
     private int    m_nextTemporary;
     private String m_code;
+    private String m_resultLocation;
 
     public CodeTemporaryPair(String code, int nextTemporary)
     {
@@ -15,9 +16,26 @@ public class CodeTemporaryPair {
         m_nextTemporary = nextTemporary;
     }
 
+    public CodeTemporaryPair(String code, int nextTemporary, String loc)
+    {
+        m_code = code;
+        m_nextTemporary = nextTemporary;
+        m_resultLocation = loc;
+    }
+
+    public void setResultLocation(String loc)
+    {
+        m_resultLocation = loc;
+    }
+
     public String getCode()
     {
         return m_code;
+    }
+
+    public String getResultLocation()
+    {
+        return m_resultLocation;
     }
 
     public int getNextAvailableTemporary()
