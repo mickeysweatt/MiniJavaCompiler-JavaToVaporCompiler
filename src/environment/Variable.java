@@ -10,6 +10,7 @@ public class Variable {
     private String m_name;
     private String m_location;
 
+    // CREATORS
     public Variable(String name)
     {
         m_name = name;
@@ -19,6 +20,17 @@ public class Variable {
     {
         m_name     = name;
         m_location = location;
+    }
+
+    // ACCESSORS
+    public String getName()
+    {
+        return m_name;
+    }
+
+    public String getLocation()
+    {
+        return m_location;
     }
 }
 

@@ -23,9 +23,10 @@ public class EnvironmentUtil {
         return identifierToString(m.f2);
     }
 
-
     public static String identifierToString(Identifier id) {
         return id.f0.toString();
     }
+
+    public static String nodeTokenToString(NodeToken t) { return t.tokenImage;}
 
 }

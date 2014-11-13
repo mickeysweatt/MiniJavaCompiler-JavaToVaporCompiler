@@ -12,7 +12,7 @@ import java.util.*;
 
 public class VaporClass {
     // DATA
-    private LinkedHashSet<Variable>     m_instaceVars;
+    private LinkedHashSet<Variable>     m_instanceVars;
     private HashMap<String ,MethodType> m_methods;
     private String                      m_name;
 
@@ -25,10 +25,19 @@ public class VaporClass {
     // MANIPULATORS
     public void addInstanceVariable(Variable v)
     {
-        if (null == m_instaceVars) {
-            m_instaceVars = new LinkedHashSet<Variable>();
+        if (null == m_instanceVars) {
+            m_instanceVars = new LinkedHashSet<Variable>();
         }
-        m_instaceVars.add(v);
+        m_instanceVars.add(v);
+    }
+
+    public void addInstanceVariable(String varName)
+    {
+        if (null == m_instanceVars) {
+            m_instanceVars = new LinkedHashSet<Variable>();
+        }
+        String  offset = String.format("%d", (1 + m_instanceVars.size()) * VaporGlobals.WORD_SIZE);
+        addInstanceVariable( new Variable(varName, offset));
     }
 
     public void addMethod(MethodType m, String method_name)
@@ -51,7 +60,7 @@ public class VaporClass {
 
     public int getSize()
     {
-        return VaporGlobals.WORD_SIZE * (1 + m_instaceVars.size());
+        return VaporGlobals.WORD_SIZE * (1 + m_instanceVars.size());
     }
 
     public CodeTemporaryPair getConstructor(int objectAddressLocation)
@@ -59,13 +68,41 @@ public class VaporClass {
         String temporary = "t." + objectAddressLocation;
         String code = String.format("%s = HeapAllocZ(%d)\n", temporary, getSize());
         // zero out variables
-        if (null != m_instaceVars && m_instaceVars.size() > 0) {
-            for (int i = 1; i <= m_instaceVars.size(); ++i)
+        code += String.format("[%s] = %s", temporary, CodeGenerationUtil.vtableLabel(this));
+        if (null != m_instanceVars && m_instanceVars.size() > 0) {
+            for (int i = 1; i <= m_instanceVars.size(); ++i)
             {
                 code += String.format("[%s + %d] = 0\n", temporary, 4*i);
             }
         }
         return new CodeTemporaryPair(code, objectAddressLocation + 1);
+    }
+
+    public Variable getVariable(String varName) {
+        Variable rval = null;
+        if (null != m_instanceVars)
+        {
+            for (Variable v: m_instanceVars) {
+                if (v.getName() == varName)
+                {
+                    rval = v;
+                    break;
+                }
+            }
+        }
+        return rval;
+    }
+
+    public LinkedHashSet<Variable> getVariables()
+    {
+        if (null == m_instanceVars) {
+            m_instanceVars = new LinkedHashSet<Variable>();
+        }
+        return m_instanceVars;
+    }
+
+    public MethodType getMethod(String method_name) {
+        return m_methods.get(method_name);
     }
 
 }
