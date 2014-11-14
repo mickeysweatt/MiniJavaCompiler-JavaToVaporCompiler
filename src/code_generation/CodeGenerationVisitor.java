@@ -1,16 +1,15 @@
 package code_generation;
 
-import com.sun.org.apache.bcel.internal.classfile.Code;
+
 import environment.*;
-import sun.org.mozilla.javascript.ast.VariableDeclaration;
 import syntaxtree.*;
 import visitor.GJDepthFirst;
 
-import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Vector;
 
 /**
- * Created by michael on 11/10/14.
+ * Author: Michael Sweatt
  */
 public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,EnvironmentTemporaryPair> {
     VaporClass curr_class;
@@ -21,6 +20,8 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
         Environment env       = envTemp.getEnvironment();
         int         curr_temp = envTemp.getNextAvailableTemporary();
 
+        curr_class  = env.getClass(EnvironmentUtil.classname(m));
+        curr_method = curr_class.getMethod("main");
         Environment localEnv = EnvironmentBuilderUtil.buildLocalEnvironment(m, env);
         String code = "";
         CodeTemporaryPair curr_statement;
@@ -29,10 +30,11 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
             curr_temp = curr_statement.getNextAvailableTemporary();
             code += curr_statement.getCode();
         }
-
-        System.out.println(String.format("func Main()" + "\n" +
-                                            "%s" +
-                                            "ret", code));
+        code = String.format("func Main()" + "\n" +
+                             "%s" +
+                             "ret", code);
+        curr_method.setDefinition(code);
+        System.out.println(code);
         return null;
     }
 
@@ -46,7 +48,6 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
 
         curr_temp          = envTemp.getNextAvailableTemporary();
         env                = envTemp.getEnvironment();
-        curr_pair          = null;
         methodDeclarations = c.f4.nodes;
 
         curr_class = env.getClass(EnvironmentUtil.classname(c));
@@ -56,7 +57,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
             MethodDeclaration method = (MethodDeclaration)n;
             MethodType method_type = curr_class.getMethod(EnvironmentUtil.identifierToString(method.f2));
             // get definition of method
-            curr_pair =  n.accept(this, envTemp);
+            curr_pair =  n.accept(this, localEnvTempPair);
             method_type.setDefinition(curr_pair.getCode());
         }
         return null;
@@ -73,27 +74,43 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
         // get local variables
         Environment localEnv = EnvironmentBuilderUtil.buildLocalEnvironment(d, curr_method, env);
 
+        // get function header
+        String functionHeader = String.format("func %s (", curr_method.getLabel());
+        List<String> param = curr_method.getParameters();
+        if (param.size() > 0) {
+            for (int i = 0; i < param.size() - 1; ++i) {
+                functionHeader += param.get(i) + ", ";
+            }
+            // add last arg without ,
+            functionHeader += param.get(param.size() - 1);
+        }
+        functionHeader += "):";
+
         // visit body (line by line)
         for (Node n: d.f8.nodes) {
             curr_statement = n.accept(this, new EnvironmentTemporaryPair(curr_temp, localEnv));
-//            method_body += curr_statement.getCode();
-//            curr_temp = curr_statement.getNextAvailableTemporary();
+            method_body += curr_statement.getCode();
+            curr_temp = curr_statement.getNextAvailableTemporary();
         }
 
+        // compile return expression
+        CodeTemporaryPair ret = d.f10.accept(this, new EnvironmentTemporaryPair(curr_temp, localEnv));
+        curr_temp = ret.getNextAvailableTemporary();
+        method_body += ret.getCode();
 
-
-
-
-        return null;
+        //combine
+        String code = String.format("%s" + "\n" +
+                                    "%s" +"\n" +
+                                    "ret %s", functionHeader, method_body, ret.getResultLocation());
+        System.out.println("\n" + code);
+        curr_method.setDefinition(code);
+        return new CodeTemporaryPair(code, curr_temp);
     }
 
     public CodeTemporaryPair visit(BooleanType b, EnvironmentTemporaryPair envTemp)
     {
-        Environment       env;
         int               curr_temp;
-
         // integer literal does not consume a temp
-        env       = envTemp.getEnvironment();
         curr_temp = envTemp.getNextAvailableTemporary();
 
         return new CodeTemporaryPair(EnvironmentUtil.nodeTokenToString(b.f0), curr_temp);
@@ -101,11 +118,9 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
 
      public CodeTemporaryPair visit(IntegerLiteral i, EnvironmentTemporaryPair envTemp)
      {
-         Environment       env;
          int               curr_temp;
 
          // integer literal does not consume a temp
-         env       = envTemp.getEnvironment();
          curr_temp = envTemp.getNextAvailableTemporary();
          String intValue = EnvironmentUtil.nodeTokenToString(i.f0);
          return new CodeTemporaryPair("", curr_temp, intValue);
@@ -124,23 +139,14 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
     }
 
      public CodeTemporaryPair visit(AssignmentStatement a, EnvironmentTemporaryPair envTemp) {
-         Environment       env;
-         int               curr_temp;
-         String            lhs_name;
+         CodeTemporaryPair lhs;
          CodeTemporaryPair rhs;
 
-         env       = envTemp.getEnvironment();
-         curr_temp = envTemp.getNextAvailableTemporary();
-         lhs_name = EnvironmentUtil.identifierToString(a.f0);
-
-         Variable lhs_var = env.getVariable(lhs_name);
-         if (null == lhs_var) {
-             System.err.println("Invalid variable lookup");
-         }
-
+         lhs = a.f0.accept(this, envTemp);
          rhs = a.f2.accept(this, envTemp);
+
          String code = String.format("%s" +
-                                     "\n%s = %s\n", rhs.getCode(), lhs_var.getLocation(), rhs.getResultLocation());
+                                     "\n%s = %s\n", rhs.getCode(), lhs.getResultLocation(), rhs.getResultLocation());
 
          return new CodeTemporaryPair(code, rhs.getNextAvailableTemporary());
      }
@@ -161,6 +167,62 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
                                                        right.getResultLocation());
 
         return new CodeTemporaryPair(code, right.getNextAvailableTemporary(), result_location);
+    }
+
+    public CodeTemporaryPair visit(MinusExpression e, EnvironmentTemporaryPair envTemp) {
+        Environment env = envTemp.getEnvironment();
+        int curr_temp = envTemp.getNextAvailableTemporary();
+
+        CodeTemporaryPair left  = e.f0.accept(this, new EnvironmentTemporaryPair(curr_temp + 1, env));
+        CodeTemporaryPair right = e.f2.accept(this, new EnvironmentTemporaryPair(left.getNextAvailableTemporary(), env));
+        String result_location = "t." + curr_temp;
+        String code = String.format("%s" +
+                        "%s" +
+                        "%s = Sub(%s %s)", left.getCode(),
+                right.getCode(),
+                result_location,
+                left.getResultLocation(),
+                right.getResultLocation());
+
+        return new CodeTemporaryPair(code, right.getNextAvailableTemporary(), result_location);
+    }
+
+    public CodeTemporaryPair visit(TimesExpression e, EnvironmentTemporaryPair envTemp) {
+        Environment env = envTemp.getEnvironment();
+        int curr_temp = envTemp.getNextAvailableTemporary();
+
+        CodeTemporaryPair left  = e.f0.accept(this, new EnvironmentTemporaryPair(curr_temp + 1, env));
+        CodeTemporaryPair right = e.f2.accept(this, new EnvironmentTemporaryPair(left.getNextAvailableTemporary(), env));
+        String result_location = "t." + curr_temp;
+        String code = String.format("%s" +
+                        "%s" +
+                        "%s = Mul(%s %s)", left.getCode(),
+                                           right.getCode(),
+                                           result_location,
+                                           left.getResultLocation(),
+                                           right.getResultLocation());
+
+        return new CodeTemporaryPair(code, right.getNextAvailableTemporary(), result_location);
+    }
+
+    public CodeTemporaryPair visit(PrintStatement p, EnvironmentTemporaryPair envTemp) {
+        CodeTemporaryPair compiledArg = p.f2.accept(this, envTemp);
+        String code = compiledArg.getCode();
+        code = String.format("%s\n" +
+                             "PrintIntS(%s)\n",code, compiledArg.getResultLocation());
+        return new CodeTemporaryPair(code, compiledArg.getNextAvailableTemporary());
+    }
+
+    public CodeTemporaryPair visit(Identifier id, EnvironmentTemporaryPair envTemp) {
+        Environment env = envTemp.getEnvironment();
+        int curr_temp   = envTemp.getNextAvailableTemporary();
+
+        Variable v  = env.getVariable(EnvironmentUtil.identifierToString(id));
+        if (null == v) {
+            System.err.println("bad identifier passed");
+            return null;
+        }
+        return new CodeTemporaryPair("", curr_temp, v.getLocation());
     }
 
 

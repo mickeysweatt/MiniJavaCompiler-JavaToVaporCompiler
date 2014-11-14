@@ -1,14 +1,10 @@
 package environment;
-
-import sun.org.mozilla.javascript.ast.VariableDeclaration;
 import syntaxtree.*;
-
 import java.util.*;
 
 /**
- * Created by michael on 10/25/14.
+ * Author: Michael Sweatt
  */
-
 
 public class EnvironmentBuilderUtil {
     public static void addInstanceVariablesToClass(Vector<Node> varList, VaporClass c) {

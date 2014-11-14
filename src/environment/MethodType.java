@@ -3,24 +3,17 @@ package environment;
 import java.util.*;
 
 /**
- * Created by michael on 11/10/14.
+ * Author: Mickey Sweatt
  */
 public class MethodType {
-    private String                     m_label;
-    private LinkedList <String>        m_parameters;
-    private String                     m_defintion;
-
+    private String              m_label;
+    private LinkedList <String> m_parameters;
+    private String              m_definition;
 
     // CREATORS
     public MethodType(String label)
     {
         m_label = label;
-    }
-
-    public MethodType(String label, LinkedList<String> parameters)
-    {
-        m_label = label;
-        m_parameters = parameters;
     }
 
     public MethodType(LinkedList<String> parameters)
@@ -36,7 +29,7 @@ public class MethodType {
 
     public void setDefinition(String definition)
     {
-        m_defintion = definition;
+        m_definition = definition;
     }
 
     // ACCESSORS
@@ -51,6 +44,11 @@ public class MethodType {
             m_parameters = new LinkedList<String>();
         }
         return m_parameters;
+    }
+
+    public String getDefinition()
+    {
+        return m_definition;
     }
 
 }
