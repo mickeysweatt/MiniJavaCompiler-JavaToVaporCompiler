@@ -3,14 +3,14 @@ package code_generation;
 import environment.Environment;
 
 /**
- * Created by michael on 11/10/14.
+ * Author: Mickey Sweatt
  */
 public class EnvironmentTemporaryPair {
     private int m_nextTemporary;
     private Environment m_environment;
 
     // CREATORS
-    public EnvironmentTemporaryPair(int k, Environment env) {
+    public EnvironmentTemporaryPair(Environment env, int k) {
         m_environment = env;
         m_nextTemporary = k;
     }

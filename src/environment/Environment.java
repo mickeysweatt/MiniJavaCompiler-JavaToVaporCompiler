@@ -4,7 +4,7 @@ import java.util.HashMap;
 
 
 /**
- * Created by michael on 11/9/14.
+ * Author: Mickey Sweatt
  */
 public class Environment {
     private HashMap<String, VaporClass> m_classes;
@@ -33,7 +33,7 @@ public class Environment {
         m_classes.put(c.getName(), c);
     }
 
-    void addVarsInScope(Variable v)
+    public void addVarsInScope(Variable v)
     {
         if (null == m_vars) {
             m_vars = new HashMap<String, Variable>();
