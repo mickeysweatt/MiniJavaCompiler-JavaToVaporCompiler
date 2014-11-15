@@ -78,16 +78,16 @@ public class EnvironmentBuilderUtil {
     public static Environment buildLocalEnvironment(MethodDeclaration d, MethodType m, Environment env)
     {
         Environment localEnv = new Environment(env);
-        for (String parameter_name : m.getParameters()) {
+        for (Variable parameter : m.getParameters()) {
             // for a parameter the location is the name
-            localEnv.addVarsInScope(new Variable(parameter_name, parameter_name));
+            localEnv.addVarsInScope(parameter);
         }
 
         for (Node n: d.f7.nodes)
         {
             VarDeclaration v = (VarDeclaration)n;
             String var_name = EnvironmentUtil.identifierToString(v.f1);
-            localEnv.addVarsInScope(new Variable(var_name, var_name));
+            localEnv.addVarsInScope(new Variable(var_name, var_name, Variable.TYPE.LOCAL_VAR));
         }
         return localEnv;
     }

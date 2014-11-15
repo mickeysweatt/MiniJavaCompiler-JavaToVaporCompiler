@@ -1,7 +1,7 @@
 package environment;
 
 /**
- * Created by michael on 11/9/14.
+ * Author: Michael Sweatt
  */
 
 import code_generation.CodeGenerationUtil;
@@ -37,7 +37,7 @@ public class VaporClass {
             m_instanceVars = new LinkedHashSet<Variable>();
         }
         String  offset = String.format("%d", (1 + m_instanceVars.size()) * VaporGlobals.WORD_SIZE);
-        addInstanceVariable( new Variable(varName, offset));
+        addInstanceVariable( new Variable(varName, offset, Variable.TYPE.INSTANCE_VAR));
     }
 
     public void addMethod(MethodType m, String method_name)
@@ -83,7 +83,7 @@ public class VaporClass {
         if (null != m_instanceVars)
         {
             for (Variable v: m_instanceVars) {
-                if (v.getName() == varName)
+                if (v.getName().equals(varName))
                 {
                     rval = v;
                     break;
