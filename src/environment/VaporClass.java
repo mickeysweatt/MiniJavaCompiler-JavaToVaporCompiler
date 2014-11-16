@@ -86,8 +86,15 @@ public class VaporClass {
     }
 
     public int getMethodOffset(String methodName) {
-        MethodType m = m_methods.get(methodName);
-        return 0;
+        int offset = 0;
+        for (Map.Entry<String, MethodType> curr : m_methods.entrySet()) {
+            if (methodName.equals(curr.getKey())) {
+                break;
+            } else {
+                offset += 4;
+            }
+        }
+        return offset;
     }
 
 }

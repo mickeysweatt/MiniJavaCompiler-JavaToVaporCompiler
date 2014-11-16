@@ -61,7 +61,8 @@ public class EnvironmentBuilderUtil {
         for (Node n : m.f14.nodes) {
             VarDeclaration var = (VarDeclaration) n;
             String var_name = EnvironmentUtil.identifierToString(var.f1);
-            localEnv.addVarsInScope(new Variable(var_name, var_name));
+            String var_type = EnvironmentUtil.syntaxTreeTypeToString(var.f0);
+            localEnv.addVarsInScope(new Variable(var_name, var_type));
         }
 
         return localEnv;

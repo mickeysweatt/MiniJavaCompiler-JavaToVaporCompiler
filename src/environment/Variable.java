@@ -24,6 +24,7 @@ public class Variable {
         m_location = name;
     }
 
+
     public Variable(String name, String type, SCOPE scope) {
         m_name = name;
         m_type = type;

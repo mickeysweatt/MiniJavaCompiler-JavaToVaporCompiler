@@ -127,22 +127,49 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
     public CodeTemporaryPair visit(MessageSend m, EnvironmentTemporaryPair envTemp) {
         Environment env = envTemp.getEnvironment();
         int curr_temp = envTemp.getNextAvailableTemporary();
+        String resultLoc = "t." + curr_temp++;
+        String objLoc;
+        String objCode;
+
+        VaporClass lhs_class;
 
         if (m.f0.f0.choice instanceof ThisExpression) {
-            String thisLoc = "t." + curr_temp;
+            objLoc = "t." + curr_temp;
             curr_temp++;
-            Variable thisVar = new Variable("this", thisLoc);
+            Variable thisVar = new Variable("this", objLoc);
             env.addVarsInScope(thisVar);
+            objCode = String.format("%s = this\n", objLoc);
+            lhs_class = curr_class;
+        } else if (m.f0.f0.choice instanceof Identifier) {
+            objCode = "";
+            Identifier id = (Identifier) m.f0.f0.choice;
+            String varName = EnvironmentUtil.identifierToString(id);
+            objLoc = env.getVariable(varName).getLocation();
+            String lhs_classname = CodeGenerationUtil.classType(m.f0, env);
+            lhs_class = env.getClass(lhs_classname);
+        } else {
+            System.err.println("unrecognized lhs");
+            return null;
         }
-
+        // Get method offset
         String method_name = EnvironmentUtil.identifierToString(m.f2);
+        int offset = lhs_class.getMethodOffset(method_name);
 
-        CodeTemporaryPair c;
+        String callLocation = "t." + curr_temp++;
 
         CodeTemporaryPair lhs = m.f0.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
         curr_temp = lhs.getNextAvailableTemporary();
-        c = m.f4.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
-        return null;
+
+        // set up Load load call
+        String code = String.format("%s\n" +
+                "%s\n" +
+                "%s = [%s + %d]\n", lhs.getCode(), objCode, callLocation, objLoc, offset);
+        CodeTemporaryPair params = CodeGenerationUtil.evaluateParameters(m.f4, objLoc, new EnvironmentTemporaryPair(env, curr_temp));
+
+        code += String.format("%s\n" +
+                "%s =  call %s %s", params.getCode(), resultLoc, callLocation, params.getResultLocation());
+        curr_temp = params.getNextAvailableTemporary();
+        return new CodeTemporaryPair(code, curr_temp, resultLoc);
     }
 
     // PASS THROUGH
