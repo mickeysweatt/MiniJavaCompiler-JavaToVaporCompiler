@@ -127,7 +127,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
     public CodeTemporaryPair visit(MessageSend m, EnvironmentTemporaryPair envTemp) {
         Environment env = envTemp.getEnvironment();
         int curr_temp = envTemp.getNextAvailableTemporary();
-        // lhs
+
         if (m.f0.f0.choice instanceof ThisExpression) {
             String thisLoc = "t." + curr_temp;
             curr_temp++;
@@ -136,6 +136,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         }
 
         String method_name = EnvironmentUtil.identifierToString(m.f2);
+
         CodeTemporaryPair c;
 
         CodeTemporaryPair lhs = m.f0.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
@@ -178,16 +179,21 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
 
     // STATEMENTS
     public CodeTemporaryPair visit(AssignmentStatement a, EnvironmentTemporaryPair envTemp) {
+        Environment env = envTemp.getEnvironment();
+        int curr_temp;
+
         CodeTemporaryPair lhs;
         CodeTemporaryPair rhs;
 
         lhs = a.f0.accept(this, envTemp);
-        rhs = a.f2.accept(this, envTemp);
+        curr_temp = lhs.getNextAvailableTemporary();
+        rhs = a.f2.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
+        curr_temp = rhs.getNextAvailableTemporary();
 
         String code = String.format("%s\n" +
                 "%s = %s\n", rhs.getCode(), lhs.getResultLocation(), rhs.getResultLocation());
 
-        return new CodeTemporaryPair(code, rhs.getNextAvailableTemporary());
+        return new CodeTemporaryPair(code, curr_temp);
     }
 
     public CodeTemporaryPair visit(IfStatement i, EnvironmentTemporaryPair envTemp) {

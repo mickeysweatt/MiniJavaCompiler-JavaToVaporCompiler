@@ -21,6 +21,7 @@ public class Variable {
     public Variable(String name, String type) {
         m_name = name;
         m_type = type;
+        m_location = name;
     }
 
     public Variable(String name, String type, SCOPE scope) {
