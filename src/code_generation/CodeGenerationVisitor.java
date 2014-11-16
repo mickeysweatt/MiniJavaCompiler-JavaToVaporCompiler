@@ -131,16 +131,14 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
         return new CodeTemporaryPair(code, curr_temp);
     }
 
+    public CodeTemporaryPair visit(MessageSend m, EnvironmentTemporaryPair envTemp) {
+        // TODO: implement me
+        // m.f2
 
-    public CodeTemporaryPair visit(IntegerLiteral i, EnvironmentTemporaryPair envTemp)
-     {
-         int               curr_temp;
-
-         // integer literal does not consume a temp
-         curr_temp = envTemp.getNextAvailableTemporary();
-         String intValue = EnvironmentUtil.nodeTokenToString(i.f0);
-         return new CodeTemporaryPair("", curr_temp, intValue);
-     }
+        m.f0.accept(this, envTemp);
+        m.f4.accept(this, envTemp);
+        return null;
+    }
 
     // PASS THROUGH
      public CodeTemporaryPair visit(Expression e, EnvironmentTemporaryPair envTemp) {
@@ -159,6 +157,21 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
          return b.f1.accept(this, envTemp);
      }
 
+    public CodeTemporaryPair visit(Block b, EnvironmentTemporaryPair envTemp) {
+        Environment env = envTemp.getEnvironment();
+        int curr_temp = envTemp.getNextAvailableTemporary();
+
+        String code = "";
+        CodeTemporaryPair curr_pair;
+
+        for (Node n : b.f1.nodes) {
+            curr_pair = n.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
+            code += curr_pair.getCode();
+            curr_temp = curr_pair.getNextAvailableTemporary();
+        }
+        return new CodeTemporaryPair(code, curr_temp);
+    }
+
     // STATEMENTS
      public CodeTemporaryPair visit(AssignmentStatement a, EnvironmentTemporaryPair envTemp) {
          CodeTemporaryPair lhs;
@@ -173,6 +186,14 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
          return new CodeTemporaryPair(code, rhs.getNextAvailableTemporary());
      }
 
+    public CodeTemporaryPair visit(IfStatement i, EnvironmentTemporaryPair envTemp) {
+        // TODO: IMPLEMENT ME
+        i.f2.accept(this, envTemp);
+        i.f4.accept(this, envTemp);
+        i.f6.accept(this, envTemp);
+        return null;
+    }
+
     public CodeTemporaryPair visit(PrintStatement p, EnvironmentTemporaryPair envTemp) {
         CodeTemporaryPair compiledArg = p.f2.accept(this, envTemp);
         String code = compiledArg.getCode();
@@ -181,8 +202,15 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
         return new CodeTemporaryPair(code, compiledArg.getNextAvailableTemporary());
     }
 
-    // EXPRESSIONS
 
+    public CodeTemporaryPair visit(WhileStatement w, EnvironmentTemporaryPair envTemp) {
+        // TODO: IMPLEMENT ME
+        w.f2.accept(this, envTemp);
+        w.f4.accept(this, envTemp);
+        return null;
+    }
+
+    // EXPRESSIONS
     public CodeTemporaryPair visit(AllocationExpression e, EnvironmentTemporaryPair envTemp) {
         Environment env = envTemp.getEnvironment();
         int curr_temp = envTemp.getNextAvailableTemporary();
@@ -206,6 +234,13 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
                 left.getResultLocation(),
                 right.getResultLocation());
         return new CodeTemporaryPair(code, right.getNextAvailableTemporary(), location);
+    }
+
+    public CodeTemporaryPair visit(CompareExpression c, EnvironmentTemporaryPair envTemp) {
+        // TODO: IMPLEMENT ME
+        c.f0.accept(this, envTemp);
+        c.f2.accept(this, envTemp);
+        return null;
     }
 
      public CodeTemporaryPair visit(PlusExpression e, EnvironmentTemporaryPair envTemp) {
@@ -277,6 +312,33 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
         return new CodeTemporaryPair(code, right.getNextAvailableTemporary(), result_location);
     }
 
+    // ARRAYS
+    public CodeTemporaryPair visit(ArrayAllocationExpression a, EnvironmentTemporaryPair envTemp) {
+        // TODO: IMPLEMENT ME
+        a.f3.accept(this, envTemp);
+        return null;
+    }
+
+    public CodeTemporaryPair visit(ArrayAssignmentStatement a, EnvironmentTemporaryPair envTemp) {
+        // TODO: IMPLEMENTED ME
+        a.f0.accept(this, envTemp);
+        a.f2.accept(this, envTemp);
+        a.f5.accept(this, envTemp);
+        return null;
+    }
+
+    public CodeTemporaryPair visit(ArrayLength a, EnvironmentTemporaryPair envTemp) {
+        // TODO: IMPLEMENT ME
+        a.f0.accept(this, envTemp);
+        return null;
+    }
+
+    public CodeTemporaryPair visit(ArrayLookup a, EnvironmentTemporaryPair envTemp) {
+        // TODO: IMPLEMENT ME
+        a.f0.accept(this, envTemp);
+        a.f2.accept(this, envTemp);
+        return null;
+    }
 
     // ENVIRONMENT
     public CodeTemporaryPair visit(Identifier id, EnvironmentTemporaryPair envTemp) {
@@ -320,5 +382,14 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
         curr_temp = envTemp.getNextAvailableTemporary();
 
         return new CodeTemporaryPair("", curr_temp, EnvironmentUtil.nodeTokenToString(b.f0));
+    }
+
+    public CodeTemporaryPair visit(IntegerLiteral i, EnvironmentTemporaryPair envTemp) {
+        int curr_temp;
+
+        // integer literal does not consume a temp
+        curr_temp = envTemp.getNextAvailableTemporary();
+        String intValue = EnvironmentUtil.nodeTokenToString(i.f0);
+        return new CodeTemporaryPair("", curr_temp, intValue);
     }
 }
