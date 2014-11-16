@@ -66,8 +66,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
 
         curr_class = env.getClass(EnvironmentUtil.classname(c));
         Environment localEnv = EnvironmentBuilderUtil.buildLocalEnvironment(c, env);
-        localEnv.addVarsInScope(new Variable("this", "t." + curr_temp, Variable.TYPE.INSTANCE_VAR));
-        curr_temp++;
+
         EnvironmentTemporaryPair localEnvTempPair = new EnvironmentTemporaryPair(localEnv, curr_temp);
 
         for (Node n : methodDeclarations) {
@@ -88,7 +87,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
 
         curr_method = curr_class.getMethod(EnvironmentUtil.methodname(d));
         CodeTemporaryPair curr_statement;
-        String method_body;
+        String method_body = "";
         // get local variables
         Environment localEnv = EnvironmentBuilderUtil.buildLocalEnvironment(d, curr_method, env);
 
@@ -103,9 +102,6 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
             functionHeader += param.get(param.size() - 1).getName();
         }
         functionHeader += "):";
-        // first add the deference of this.
-        Variable thisVar = env.getVariable("this");
-        method_body = String.format("%s = this\n", thisVar.getLocation());
         // visit body (line by line)
 
         for (Node n : d.f8.nodes) {
@@ -129,11 +125,22 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
     }
 
     public CodeTemporaryPair visit(MessageSend m, EnvironmentTemporaryPair envTemp) {
-        // TODO: implement me
-        // m.f2
+        Environment env = envTemp.getEnvironment();
+        int curr_temp = envTemp.getNextAvailableTemporary();
+        // lhs
+        if (m.f0.f0.choice instanceof ThisExpression) {
+            String thisLoc = "t." + curr_temp;
+            curr_temp++;
+            Variable thisVar = new Variable("this", thisLoc);
+            env.addVarsInScope(thisVar);
+        }
 
-        m.f0.accept(this, envTemp);
-        m.f4.accept(this, envTemp);
+        String method_name = EnvironmentUtil.identifierToString(m.f2);
+        CodeTemporaryPair c;
+
+        CodeTemporaryPair lhs = m.f0.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
+        curr_temp = lhs.getNextAvailableTemporary();
+        c = m.f4.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
         return null;
     }
 
@@ -382,11 +389,10 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         String location;
         // FIXME...probably?
         String code;
-        if (Variable.TYPE.INSTANCE_VAR == v.getType()) {
+        if (Variable.SCOPE.INSTANCE_VAR == v.getScope()) {
             location = String.format("t.%d", curr_temp);
             curr_temp++;
-            String thisLocation = env.getVariable("this").getLocation();
-            code = String.format("%s = [%s + %s]\n", location, thisLocation, v.getLocation());
+            code = String.format("%s = [this + %s]\n", location, v.getLocation());
         } else {
             code = "";
             location = v.getLocation();
