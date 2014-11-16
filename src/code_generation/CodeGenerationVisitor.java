@@ -75,7 +75,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
             MethodType method_type = curr_class.getMethod(EnvironmentUtil.identifierToString(method.f2));
             // get definition of method
             curr_pair = n.accept(this, localEnvTempPair);
-            localEnvTempPair = new EnvironmentTemporaryPair(localEnv, curr_pair.getNextAvailableTemporary());
+            localEnvTempPair = new EnvironmentTemporaryPair(localEnv, 0);
             CodeGenerationUtil.prettyPrintMethod(curr_pair.getCode());
             method_type.setDefinition(curr_pair.getCode());
         }
@@ -184,11 +184,31 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
     }
 
     public CodeTemporaryPair visit(IfStatement i, EnvironmentTemporaryPair envTemp) {
-        // TODO: IMPLEMENT ME
-        i.f2.accept(this, envTemp);
-        i.f4.accept(this, envTemp);
-        i.f6.accept(this, envTemp);
-        return null;
+        int curr_temp = envTemp.getNextAvailableTemporary();
+
+        CodeTemporaryPair condition, thenBranch, elseBranch;
+        String code, tag;
+        tag = String.format("if%d", curr_temp);
+
+        condition = i.f2.accept(this, envTemp);
+        thenBranch = i.f4.accept(this, envTemp);
+        elseBranch = i.f6.accept(this, envTemp);
+
+        code = String.format("%s\n" +
+                        "if0 %s goto :%s_else\n" +
+                        "%s\n" +
+                        "goto :%s_end\n" +
+                        "%s_else:\n" +
+                        "%s\n" +
+                        "%s_end:\n", condition.getCode(),
+                condition.getResultLocation(),
+                tag,
+                thenBranch.getCode(),
+                tag,
+                tag,
+                elseBranch.getCode(),
+                tag);
+        return new CodeTemporaryPair(code, elseBranch.getNextAvailableTemporary());
     }
 
     public CodeTemporaryPair visit(PrintStatement p, EnvironmentTemporaryPair envTemp) {
