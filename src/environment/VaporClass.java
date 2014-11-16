@@ -8,13 +8,16 @@ import code_generation.CodeGenerationUtil;
 import code_generation.CodeTemporaryPair;
 import code_generation.VaporGlobals;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class VaporClass {
     // DATA
-    private LinkedHashSet<Variable>     m_instanceVars;
-    private HashMap<String ,MethodType> m_methods;
-    private String                      m_name;
+    private LinkedHashSet<Variable> m_instanceVars = new LinkedHashSet<Variable>();
+    private HashMap<String, MethodType> m_methods = new HashMap<String, MethodType>();
+    private String m_name = "";
 
     // CREATORS
     public VaporClass(String name)
@@ -68,14 +71,14 @@ public class VaporClass {
         String temporary = "t." + objectAddressLocation;
         String code = String.format("%s = HeapAllocZ(%d)\n", temporary, getSize());
         // zero out variables
-        code += String.format("[%s] = %s", temporary, CodeGenerationUtil.vtableLabel(this));
+        code += String.format("[%s] = :%s\n", temporary, CodeGenerationUtil.vtableLabel(this));
         if (null != m_instanceVars && m_instanceVars.size() > 0) {
             for (int i = 1; i <= m_instanceVars.size(); ++i)
             {
                 code += String.format("[%s + %d] = 0\n", temporary, 4*i);
             }
         }
-        return new CodeTemporaryPair(code, objectAddressLocation + 1);
+        return new CodeTemporaryPair(code, objectAddressLocation + 1, temporary);
     }
 
     public Variable getVariable(String varName) {

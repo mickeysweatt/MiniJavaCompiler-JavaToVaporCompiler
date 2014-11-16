@@ -11,12 +11,12 @@ import java.util.Map;
  */
 public class CodeGenerationUtil {
     public static String vtableLabel(VaporClass c) {
-        return String.format("const %s.VTable", c.getName());
+        return String.format("%s.VTable", c.getName());
     }
     public static void outputVtables(Environment env) {
         // TODO add subtyping
         for (Map.Entry<String, VaporClass> class_entry : env.getClasses().entrySet()) {
-            System.out.println(vtableLabel(class_entry.getValue()));
+            System.out.println(" const " + vtableLabel(class_entry.getValue()));
             for (Map.Entry<String, MethodType> method_entry: class_entry.getValue().getMethods()) {
                 System.out.println(String.format("\t:%s", method_entry.getValue().getLabel()));
             }

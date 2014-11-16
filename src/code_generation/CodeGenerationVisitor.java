@@ -182,6 +182,15 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
     }
 
     // EXPRESSIONS
+
+    public CodeTemporaryPair visit(AllocationExpression e, EnvironmentTemporaryPair envTemp) {
+        Environment env = envTemp.getEnvironment();
+        int curr_temp = envTemp.getNextAvailableTemporary();
+
+        String class_name = EnvironmentUtil.identifierToString(e.f1);
+        return env.getClass(class_name).getConstructor(curr_temp);
+    }
+
     public CodeTemporaryPair visit(AndExpression e, EnvironmentTemporaryPair envTemp) {
         Environment env = envTemp.getEnvironment();
         int curr_temp = envTemp.getNextAvailableTemporary();
@@ -243,6 +252,11 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair,Enviro
                 location,
                 intermediateValue.getResultLocation());
         return new CodeTemporaryPair(code, intermediateValue.getNextAvailableTemporary() + 1, location);
+    }
+
+    public CodeTemporaryPair visit(ThisExpression e, EnvironmentTemporaryPair envTemp) {
+        Variable thisVar = envTemp.getEnvironment().getVariable("this");
+        return new CodeTemporaryPair("", envTemp.getNextAvailableTemporary(), thisVar.getLocation());
     }
 
     public CodeTemporaryPair visit(TimesExpression e, EnvironmentTemporaryPair envTemp) {
