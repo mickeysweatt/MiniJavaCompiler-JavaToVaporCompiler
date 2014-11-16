@@ -1,14 +1,14 @@
 package environment;
 
 
-import visitor.GJDepthFirst;
+import syntaxtree.ClassDeclaration;
+import syntaxtree.MainClass;
 import visitor.GJVoidDepthFirst;
-import syntaxtree.*;
 
 /**
- * Created by michael on 11/9/14.
+ * Author: Mickey Sweatt
  */
-public class EnvironmentBuilderVisitor extends GJVoidDepthFirst<Environment>{
+public class EnvironmentBuilderVisitor extends GJVoidDepthFirst<Environment> {
 
     public void visit(ClassDeclaration d, Environment env) {
         String class_name;
@@ -34,7 +34,6 @@ public class EnvironmentBuilderVisitor extends GJVoidDepthFirst<Environment>{
         declared_class.addMethod(main, "main");
 
         env.addClass(declared_class);
-
     }
 
 }

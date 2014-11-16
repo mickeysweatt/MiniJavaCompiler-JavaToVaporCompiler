@@ -1,6 +1,9 @@
 package environment;
+
 import syntaxtree.*;
-import java.util.*;
+
+import java.util.LinkedList;
+import java.util.Vector;
 
 /**
  * Author: Michael Sweatt
@@ -11,7 +14,8 @@ public class EnvironmentBuilderUtil {
         for (Node n : varList) {
             VarDeclaration var = (VarDeclaration) n;
             String var_name = EnvironmentUtil.identifierToString(var.f1);
-            c.addInstanceVariable(var_name);
+            String var_type = EnvironmentUtil.syntaxTreeTypeToString(var.f0);
+            c.addInstanceVariable(var_name, var_type);
         }
     }
 
@@ -24,18 +28,19 @@ public class EnvironmentBuilderUtil {
         }
     }
 
-    public static LinkedList<String> getVariableList(Node parameter) {
-        LinkedList<String> vars = new LinkedList<String>();
+    public static LinkedList<Variable> getVariableList(Node parameter) {
+        LinkedList<Variable> vars = new LinkedList<Variable>();
         if (null != parameter && parameter instanceof FormalParameterRest) {
             vars = getVariableList(((FormalParameterRest) parameter).f1);
         } else if (null != parameter && parameter instanceof FormalParameter) {
             FormalParameter fp = (FormalParameter) parameter;
             String parameterName = fp.f1.f0.toString();
-            vars = new LinkedList<String>();
-            vars.add(parameterName);
+            String parameterType = EnvironmentUtil.syntaxTreeTypeToString(fp.f0);
+            vars = new LinkedList<Variable>();
+            vars.add(new Variable(parameterName, parameterType));
         } else if (null != parameter && parameter instanceof FormalParameterList) {
             FormalParameterList pl = (FormalParameterList) parameter;
-            vars = new LinkedList<String>();
+            vars = new LinkedList<Variable>();
             vars.addAll(getVariableList(pl.f0));
             for (Node n : pl.f1.nodes) {
                 vars.addAll(getVariableList(n));
@@ -44,18 +49,17 @@ public class EnvironmentBuilderUtil {
         return vars;
     }
 
-    public static Environment buildLocalEnvironment(MainClass m, Environment env)
-    {
+    public static Environment buildLocalEnvironment(MainClass m, Environment env) {
         Environment localEnv = new Environment(env);
         String class_name = EnvironmentUtil.classname(m);
         VaporClass curr_class = localEnv.getClass(class_name);
 
-        for (Variable v: curr_class.getVariables()) {
+        for (Variable v : curr_class.getVariables()) {
             localEnv.addVarsInScope(v);
         }
 
-        for (Node n: m.f14.nodes) {
-            VarDeclaration var = (VarDeclaration)n;
+        for (Node n : m.f14.nodes) {
+            VarDeclaration var = (VarDeclaration) n;
             String var_name = EnvironmentUtil.identifierToString(var.f1);
             localEnv.addVarsInScope(new Variable(var_name, var_name));
         }
@@ -63,31 +67,28 @@ public class EnvironmentBuilderUtil {
         return localEnv;
     }
 
-    public static Environment buildLocalEnvironment(ClassDeclaration d, Environment env)
-    {
+    public static Environment buildLocalEnvironment(ClassDeclaration d, Environment env) {
         Environment localEnv = new Environment(env);
         String class_name = EnvironmentUtil.classname(d);
         VaporClass curr_class = localEnv.getClass(class_name);
 
-        for (Variable v: curr_class.getVariables()) {
+        for (Variable v : curr_class.getVariables()) {
             localEnv.addVarsInScope(v);
         }
         return localEnv;
     }
 
-    public static Environment buildLocalEnvironment(MethodDeclaration d, MethodType m, Environment env)
-    {
+    public static Environment buildLocalEnvironment(MethodDeclaration d, MethodType m, Environment env) {
         Environment localEnv = new Environment(env);
         for (Variable parameter : m.getParameters()) {
             // for a parameter the location is the name
             localEnv.addVarsInScope(parameter);
         }
 
-        for (Node n: d.f7.nodes)
-        {
-            VarDeclaration v = (VarDeclaration)n;
+        for (Node n : d.f7.nodes) {
+            VarDeclaration v = (VarDeclaration) n;
             String var_name = EnvironmentUtil.identifierToString(v.f1);
-            localEnv.addVarsInScope(new Variable(var_name, var_name, Variable.TYPE.LOCAL_VAR));
+            localEnv.addVarsInScope(new Variable(var_name, var_name, Variable.SCOPE.LOCAL_VAR));
         }
         return localEnv;
     }

@@ -8,7 +8,7 @@ import code_generation.CodeGenerationUtil;
 import code_generation.CodeTemporaryPair;
 import code_generation.VaporGlobals;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -16,7 +16,7 @@ import java.util.Set;
 public class VaporClass {
     // DATA
     private LinkedHashSet<Variable> m_instanceVars = new LinkedHashSet<Variable>();
-    private HashMap<String, MethodType> m_methods = new HashMap<String, MethodType>();
+    private LinkedHashMap<String, MethodType> m_methods = new LinkedHashMap<String, MethodType>();
     private String m_name = "";
 
     // CREATORS
@@ -26,24 +26,15 @@ public class VaporClass {
 
     // MANIPULATORS
     public void addInstanceVariable(Variable v) {
-        if (null == m_instanceVars) {
-            m_instanceVars = new LinkedHashSet<Variable>();
-        }
         m_instanceVars.add(v);
     }
 
-    public void addInstanceVariable(String varName) {
-        if (null == m_instanceVars) {
-            m_instanceVars = new LinkedHashSet<Variable>();
-        }
+    public void addInstanceVariable(String varName, String varType) {
         String offset = String.format("%d", (1 + m_instanceVars.size()) * VaporGlobals.WORD_SIZE);
-        addInstanceVariable(new Variable(varName, offset, Variable.TYPE.INSTANCE_VAR));
+        addInstanceVariable(new Variable(varName, varType, offset, Variable.SCOPE.INSTANCE_VAR));
     }
 
     public void addMethod(MethodType m, String method_name) {
-        if (null == m_methods) {
-            m_methods = new HashMap<String, MethodType>();
-        }
         String full_name = m_name + "." + method_name;
         m.setLabel(full_name);
         m_methods.put(method_name, m);
@@ -92,6 +83,11 @@ public class VaporClass {
 
     public MethodType getMethod(String method_name) {
         return m_methods.get(method_name);
+    }
+
+    public int getMethodOffset(String methodName) {
+        MethodType m = m_methods.get(methodName);
+        return 0;
     }
 
 }

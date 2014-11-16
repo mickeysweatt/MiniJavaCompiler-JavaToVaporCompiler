@@ -27,6 +27,26 @@ public class EnvironmentUtil {
         return id.f0.toString();
     }
 
-    public static String nodeTokenToString(NodeToken t) { return t.tokenImage;}
+    public static String syntaxTreeTypeToString(Node n) {
+        if (n instanceof Type) {
+            Type t = (Type) n;
+            return syntaxTreeTypeToString(t.f0.choice);
+        }
+        if (n instanceof IntegerType) {
+            return "int";
+        } else if (n instanceof BooleanType) {
+            return "boolean";
+        } else if (n instanceof Identifier) {
+            Identifier id = (Identifier) n;
+            return identifierToString(id);
+        } else {
+            System.err.println("syntaxTreeTypeToString called with unrecongized type");
+            return null;
+        }
+    }
+
+    public static String nodeTokenToString(NodeToken t) {
+        return t.tokenImage;
+    }
 
 }
