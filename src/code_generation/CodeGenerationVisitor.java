@@ -71,6 +71,8 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
             MethodDeclaration method = (MethodDeclaration) n;
             MethodType method_type = curr_class.getMethod(EnvironmentUtil.identifierToString(method.f2));
             // get definition of method
+
+            // TODO: ask about labels!! (globally unique)
             localEnvTempPair = new EnvironmentTemporaryPair(localEnv, 0);
             curr_pair = n.accept(this, localEnvTempPair);
 
@@ -131,12 +133,25 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         String objCode;
 
         VaporClass lhs_class;
+        CodeTemporaryPair lhs = m.f0.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
+        curr_temp = lhs.getNextAvailableTemporary();
 
-        if (m.f0.f0.choice instanceof ThisExpression) {
-            objLoc = "t." + curr_temp;
+        if (m.f0.f0.choice instanceof AllocationExpression) {
             curr_temp++;
-            Variable thisVar = new Variable("this", objLoc);
-            env.addVarsInScope(thisVar);
+            String lhs_classname = CodeGenerationUtil.classType(m.f0, env);
+            lhs_class = env.getClass(lhs_classname);
+            objLoc = lhs.getResultLocation();
+            objCode = "";
+        } else if (m.f0.f0.choice instanceof ThisExpression) {
+            if (null == env.getVariable("this")) {
+                objLoc = "t." + curr_temp;
+                curr_temp++;
+                Variable thisVar = new Variable("this", objLoc);
+                env.addVarsInScope(thisVar);
+            }
+            else {
+                objLoc = env.getVariable("this").getLocation();
+            }
             objCode = String.format("%s = this\n", objLoc);
             lhs_class = curr_class;
         } else if (m.f0.f0.choice instanceof Identifier) {
@@ -154,10 +169,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         String method_name = EnvironmentUtil.identifierToString(m.f2);
         int offset = lhs_class.getMethodOffset(method_name);
 
-        String callLocation = "t." + curr_temp++;
-
-        CodeTemporaryPair lhs = m.f0.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
-        curr_temp = lhs.getNextAvailableTemporary();
+        String callLocation = objLoc;
 
         // set up Load load call
         String code = String.format("%s\n" +
@@ -174,6 +186,10 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
     // PASS THROUGH
     public CodeTemporaryPair visit(Expression e, EnvironmentTemporaryPair envTemp) {
         return e.f0.accept(this, envTemp);
+    }
+
+    public CodeTemporaryPair visit(ExpressionRest e, EnvironmentTemporaryPair envTemp) {
+        return e.f1.accept(this, envTemp);
     }
 
     public CodeTemporaryPair visit(PrimaryExpression e, EnvironmentTemporaryPair envTemp) {
@@ -239,14 +255,15 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
                         "goto :%s_end\n" +
                         "%s_else:\n" +
                         "%s\n" +
-                        "%s_end:\n", condition.getCode(),
-                condition.getResultLocation(),
-                tag,
-                thenBranch.getCode(),
-                tag,
-                tag,
-                elseBranch.getCode(),
-                tag);
+                        "%s_end:\n",
+                        condition.getCode(),
+                        condition.getResultLocation(),
+                        tag,
+                        thenBranch.getCode(),
+                        tag,
+                        tag,
+                        elseBranch.getCode(),
+                        tag);
         return new CodeTemporaryPair(code, elseBranch.getNextAvailableTemporary());
     }
 
@@ -261,9 +278,24 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
 
     public CodeTemporaryPair visit(WhileStatement w, EnvironmentTemporaryPair envTemp) {
         // TODO: IMPLEMENT ME
-        w.f2.accept(this, envTemp);
-        w.f4.accept(this, envTemp);
-        return null;
+        Environment env = envTemp.getEnvironment();
+        int curr_temp   = envTemp.getNextAvailableTemporary();
+        CodeTemporaryPair conditon = w.f2.accept(this, envTemp);
+        CodeTemporaryPair body     = w.f4.accept(this, new EnvironmentTemporaryPair(env, conditon.getNextAvailableTemporary()));
+        String bodyTag     =  "Loop_body_" + curr_temp;
+        String conditonTag =  "Loop_condition_" + curr_temp;
+        String code = String.format("goto :%s\n" +
+                                    ":%s\n" +
+                                    "%s\n" +
+                                    "%s\n" +
+                                    "if %s goto :%s", conditonTag,
+                                                      bodyTag,
+                                                      body.getCode(),
+                                                      conditon.getCode(),
+                                                      conditon.getResultLocation(),
+                                                      bodyTag);
+        //System.out.println(code);
+        return new CodeTemporaryPair(code, body.getNextAvailableTemporary());
     }
 
     // EXPRESSIONS
