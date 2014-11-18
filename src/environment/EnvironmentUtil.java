@@ -39,6 +39,8 @@ public class EnvironmentUtil {
         } else if (n instanceof Identifier) {
             Identifier id = (Identifier) n;
             return identifierToString(id);
+        } else if (n instanceof  ArrayType) {
+            return "int []";
         } else {
             System.err.println("syntaxTreeTypeToString called with unrecongized type");
             return null;

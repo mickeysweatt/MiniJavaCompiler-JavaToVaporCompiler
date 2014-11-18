@@ -12,6 +12,29 @@ import java.util.Map;
  * Author: Michael Sweatt
  */
 public class CodeGenerationUtil {
+    public static class  Array {
+        public static void produceArrayAllocateMethod()
+        {
+            String bodyLabel = "class.ARRAY_ALLOC_BODY";
+            String lenLoc    = "t.0";
+            String arrayLoc  = "t.1";
+            String checkingCode = String.format("if LtS(0 n) goto : %s\n" +
+                                                "Error(\"Arrays sizes must be larger than 0\")" , bodyLabel);
+            String sizeComputationCode = String.format("%s = Add(n 1)\n" +
+                                                       "%s = MulS(t.0 4)\n", lenLoc, lenLoc);
+
+            String allocationCode = String.format("%s   = HeapAllocZ(%s)\n" +
+                                                  "[%s]  = size\n", arrayLoc, lenLoc, arrayLoc);
+            String code = String.format("func class.ArrayAllocate(n)\n" +
+                                        "%s\n" +
+                                        ":%s\n" +
+                                        "%s\n" +
+                                        "%s\n" +
+                                        "ret %s\n", checkingCode, bodyLabel, sizeComputationCode, allocationCode, arrayLoc);
+            prettyPrintMethod(code);
+        }
+    }
+
     public static String vtableLabel(VaporClass c) {
         return String.format("%s.VTable", c.getName());
     }
@@ -64,8 +87,6 @@ public class CodeGenerationUtil {
         parameters += ")";
         return new CodeTemporaryPair(code, curr_temp, parameters);
     }
-
-
 
     public static void prettyPrintMethod(String code) {
         // remove blank lines
