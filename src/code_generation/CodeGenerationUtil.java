@@ -55,7 +55,7 @@ public class CodeGenerationUtil {
             curr_temp = param.getNextAvailableTemporary();
             parameters += " " + param.getResultLocation();
             for (Node node : e.f1.nodes) {
-                node.accept(v, new EnvironmentTemporaryPair(env, curr_temp));
+                param = node.accept(v, new EnvironmentTemporaryPair(env, curr_temp));
                 code += param.getCode();
                 curr_temp = param.getNextAvailableTemporary();
                 parameters += " " + param.getResultLocation();
