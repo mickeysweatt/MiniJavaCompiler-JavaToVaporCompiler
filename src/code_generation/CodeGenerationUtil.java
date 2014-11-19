@@ -41,6 +41,9 @@ public class CodeGenerationUtil {
     public static void outputVtables(Environment env) {
         // TODO add subtyping
         for (Map.Entry<String, VaporClass> class_entry : env.getClasses().entrySet()) {
+            if (env.getMainClass() == class_entry.getValue()) {
+                continue;
+            }
             System.out.println(" const " + vtableLabel(class_entry.getValue()));
             for (Map.Entry<String, MethodType> method_entry: class_entry.getValue().getMethods()) {
                 System.out.println(String.format("\t:%s", method_entry.getValue().getLabel()));

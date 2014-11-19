@@ -27,6 +27,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
             n.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
             curr_temp = curr_code.getNextAvailableTemporary();
         }
+        System.out.println("");
         return null;
     }
 
@@ -102,7 +103,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
             // add last arg without SPACE
             functionHeader += param.get(param.size() - 1).getName();
         }
-        functionHeader += "):";
+        functionHeader += ")";
         // visit body (line by line)
 
         for (Node n : d.f8.nodes) {
@@ -178,9 +179,10 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         String callLocation = "t" + curr_temp++;
 
         // set up Load load call
-        String code = String.format("%s\n" +
-                "%s\n" +
-                "%s = [%s + %d]\n", lhs.getCode(), objCode, callLocation, objLoc, offset);
+        String code = String.format("%s\n", lhs.getCode()) +
+                      String.format("%s\n", objCode) +
+                      String.format("%s = [%s]\n", callLocation, objLoc) +
+                      String.format("%s = [%s + %d]\n", callLocation, callLocation, offset);
         CodeTemporaryPair params = CodeGenerationUtil.evaluateParameters(m.f4, objLoc, new EnvironmentTemporaryPair(env, curr_temp));
 
         code += String.format("%s\n" +
@@ -290,12 +292,14 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         String bodyTag     =  "Loop_body_" + curr_temp;
         String conditonTag =  "Loop_condition_" + curr_temp;
         String code = String.format("goto :%s\n" +
-                                    ":%s\n" +
+                                    "%s:\n" +
                                     "%s\n" +
+                                    "%s:\n" +
                                     "%s\n" +
                                     "if %s goto :%s", conditonTag,
                                                       bodyTag,
                                                       body.getCode(),
+                                                      conditonTag,
                                                       conditon.getCode(),
                                                       conditon.getResultLocation(),
                                                       bodyTag);
@@ -468,15 +472,49 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
 
     public CodeTemporaryPair visit(ArrayLookup a, EnvironmentTemporaryPair envTemp) {
         // TODO: IMPLEMENT ME
-        CodeTemporaryPair c = a.f0.accept(this, envTemp);
-        c = a.f2.accept(this, envTemp);
-        return null;
+        Environment env  = envTemp.getEnvironment();
+        int curr_temp    = envTemp.getNextAvailableTemporary();
+        String resultLoc = "t." + curr_temp;
+
+        String lenLabel    = "length_" + curr_temp;
+        String boundsLabel = "bounds_" + curr_temp;
+
+        CodeTemporaryPair lhs   = a.f0.accept(this, new EnvironmentTemporaryPair(env, curr_temp + 1));
+        CodeTemporaryPair index = a.f2.accept(this, new EnvironmentTemporaryPair(env, lhs.getNextAvailableTemporary()));
+        curr_temp = index.getNextAvailableTemporary();
+
+        String lhs_loc   = lhs.getResultLocation();
+        String index_loc = index.getResultLocation();
+        String len_loc   = "t." + curr_temp++;
+        String i_loc    = "t."+ curr_temp++; // the location for the checks we add to use
+
+        // start with code to check for a negative index
+        String code = String.format("%s = LeS(0 %s)\n" +
+                                    "if %s goto :%s\n" +
+                                     "Error(\"Negative index\")\n", i_loc, index_loc, i_loc, lenLabel);
+        // add code to get length
+        code += String.format("%s:\n" +
+                              "%s = [%s]\n", lenLabel, len_loc, lhs_loc);
+
+        // next bounds check
+        code += String.format("%s = LtS(%s %s)\n",i_loc, index_loc, len_loc)  +
+                String.format("if %s goto :%s\n", i_loc, boundsLabel) +
+                              "Error(\"Index out of bounds\")\n";
+
+        // next compute the offset
+        code += String.format("%s:\n",             boundsLabel)                   +
+                String.format("%s = Add(4 %s)\n" , lhs_loc, lhs_loc)              +
+                String.format("%s = MulS(%s 4)\n", index_loc, index_loc)          +
+                String.format("%s = Add(%s %s)\n", index_loc, lhs_loc, i_loc) +
+                String.format("%s = [%s]\n"     , resultLoc, i_loc);
+
+        return new CodeTemporaryPair(code, curr_temp, resultLoc);
     }
 
     // ENVIRONMENT
     public CodeTemporaryPair visit(Identifier id, EnvironmentTemporaryPair envTemp) {
         Environment env = envTemp.getEnvironment();
-        int curr_temp = envTemp.getNextAvailableTemporary();
+        int curr_temp   = envTemp.getNextAvailableTemporary();
         String location;
         location = String.format("t.%d", curr_temp);
 

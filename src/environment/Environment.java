@@ -8,7 +8,7 @@ import java.util.HashMap;
  */
 public class Environment {
     private HashMap<String, VaporClass> m_classes;
-
+    private VaporClass                m_mainClass;
     private HashMap<String, Variable> m_vars;
 
     // CREATORS
@@ -41,6 +41,11 @@ public class Environment {
         m_vars.put(v.getName(), v);
     }
 
+    public void setMainClass(VaporClass main)
+    {
+        m_mainClass = main;
+    }
+
     // ACCESSORS
     public HashMap<String, VaporClass> getClasses()
     {
@@ -60,5 +65,9 @@ public class Environment {
         return m_vars.get(var_name);
     }
 
+    public VaporClass getMainClass()
+    {
+        return m_mainClass;
+    }
 
 }
