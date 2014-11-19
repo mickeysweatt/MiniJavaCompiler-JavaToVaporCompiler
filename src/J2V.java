@@ -3,13 +3,13 @@ import code_generation.CodeGenerationVisitor;
 import code_generation.EnvironmentTemporaryPair;
 import environment.Environment;
 import environment.EnvironmentBuilderVisitor;
-import environment.VaporClass;
+
 import syntaxtree.*;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.util.Map;
+
 
 public class J2V {
     public static void main(String [] args) {
@@ -31,7 +31,7 @@ public class J2V {
                             parse = new MiniJavaParser(in);
                         }
                         else {
-                            parse.ReInit(in);
+                            MiniJavaParser.ReInit(in);
                         }
                         Goal g = MiniJavaParser.Goal();
                         // First build up the environment (All class, with vtable, and instance vars)
@@ -40,9 +40,12 @@ public class J2V {
 
                         g.accept(e, env);
                         // Output static data
+                        CodeGenerationUtil.produceCompilerReservedMethods(env);
                         CodeGenerationUtil.outputVtables(env);
+
                         CodeGenerationVisitor cgen = new CodeGenerationVisitor();
                         g.accept(cgen, new EnvironmentTemporaryPair(env));
+                        CodeGenerationUtil.printMethodDefinitions(env);
                     }
                     catch (ParseException e) {
                         System.out.println(e.toString());

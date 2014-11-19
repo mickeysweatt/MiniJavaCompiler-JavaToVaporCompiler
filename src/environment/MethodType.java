@@ -44,8 +44,8 @@ public class MethodType {
         return m_parameters;
     }
 
-//    public String getDefinition() {
-//        return m_definition;
-//    }
+    public String getDefinition() {
+        return m_definition;
+    }
 
 }

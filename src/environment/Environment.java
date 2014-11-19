@@ -1,7 +1,8 @@
 package environment;
 
 import java.util.HashMap;
-
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Author: Mickey Sweatt
@@ -25,7 +26,7 @@ public class Environment {
     }
 
     // MANIPULATORS
-    void addClass(VaporClass c)
+    public void addClass(VaporClass c)
     {
         if (m_classes == null) {
             m_classes = new HashMap<String, VaporClass>();
@@ -47,9 +48,8 @@ public class Environment {
     }
 
     // ACCESSORS
-    public HashMap<String, VaporClass> getClasses()
-    {
-        return m_classes;
+    public Set<Map.Entry <String, VaporClass> > getClasses() {
+        return m_classes.entrySet();
     }
 
     public VaporClass getClass(String class_name)

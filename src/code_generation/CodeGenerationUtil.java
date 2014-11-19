@@ -12,39 +12,98 @@ import java.util.Map;
  * Author: Michael Sweatt
  */
 public class CodeGenerationUtil {
+    public static void produceCompilerReservedMethods(Environment env)
+    {
+        VaporClass compilerReservedMethods = new VaporClass("class");
+        MethodType m = new MethodType("ArrayAllocate");
+        m.setDefinition(Array.produceArrayAllocateMethod());
+        compilerReservedMethods.addMethod(m, "ArrayAllocate");
+
+        m = new MethodType("produceArrayAccess");
+        m.setDefinition(Array.produceArrayAccess());
+        compilerReservedMethods.addMethod(m, "ArrayAccess");
+
+        env.addClass(compilerReservedMethods);
+    }
     public static class  Array {
-        public static void produceArrayAllocateMethod()
+
+        static String produceArrayAllocateMethod()
         {
             String bodyLabel = "class.ARRAY_ALLOC_BODY";
-            String lenLoc    = "t.0";
-            String arrayLoc  = "t.1";
-            String checkingCode = String.format("if LtS(0 n) goto : %s\n" +
-                                                "Error(\"Arrays sizes must be larger than 0\")" , bodyLabel);
+            String lenLoc    = "len";
+            String tempLoc   = "t.0";
+            String arrayLoc  = "arr";
+            String checkingCode =   String.format("%s = LtS(0 n)\n", tempLoc) +
+                    String.format("if %s goto :%s\n", tempLoc, bodyLabel) +
+                    "Error(\"Arrays sizes must be larger than 0\")";
             String sizeComputationCode = String.format("%s = Add(n 1)\n" +
-                                                       "%s = MulS(t.0 4)\n", lenLoc, lenLoc);
+                    "%s = MulS(%s 4)\n", lenLoc, lenLoc, lenLoc);
 
             String allocationCode = String.format("%s   = HeapAllocZ(%s)\n" +
-                                                  "[%s]  = size\n", arrayLoc, lenLoc, arrayLoc);
-            String code = String.format("func class.ArrayAllocate(n)\n" +
-                                        "%s\n" +
-                                        ":%s\n" +
-                                        "%s\n" +
-                                        "%s\n" +
-                                        "ret %s\n", checkingCode, bodyLabel, sizeComputationCode, allocationCode, arrayLoc);
-            prettyPrintMethod(code);
+                    "[%s]  = n\n", arrayLoc, lenLoc, arrayLoc);
+            return  String.format("func class.ArrayAllocate(n)\n" +
+                                  "%s\n" +
+                                  "%s:\n" +
+                                  "%s\n" +
+                                  "%s\n" +
+                                  "ret %s\n", checkingCode, bodyLabel, sizeComputationCode, allocationCode, arrayLoc);
+        }
+
+        static String produceArrayAccess()
+        {
+            int         curr_temp   = 1;
+            //String      resultLoc  = "t." + curr_temp;
+            String      lenLabel    = "LENGTH_" + curr_temp;
+            String      assignLabel = "ASSIGN_" + curr_temp;
+
+
+            String i_loc     = "t." + curr_temp;
+            String len_loc   = "len";
+            String code = "";
+
+            // start with code to check for a negative index
+            code += String.format("%s = LtS(-1 idx)\n" +
+                    "if %s goto :%s\n" +
+                    "Error(\"Negative index\")\n", i_loc, i_loc, lenLabel);
+
+            // add code to get length
+            code += String.format("%s:\n" +
+                    "%s = [a]\n", lenLabel, len_loc);
+
+            // next bounds check
+            code += String.format("%s = LtS(idx %s)\n",i_loc, len_loc)  +
+                    String.format("if %s goto :%s\n", i_loc, assignLabel) +
+                    "Error(\"Index out of bounds\")\n";
+
+            // next compute the offset
+            code += String.format("%s:\n",             assignLabel)           +
+                    String.format("pos = Add(4 a)\n" )                        +
+                    String.format("%s = MulS(idx 4)\n", i_loc)                +
+                    String.format("pos = Add(%s pos)\n", i_loc)               +
+                    String.format("ret pos");
+            code = "func class.ArrayAccess(a idx)\n" + code;
+
+            return code;
         }
     }
 
+    public static void printMethodDefinitions(Environment env) {
+        for (Map.Entry<String, VaporClass> c : env.getClasses()) {
+            for (Map.Entry<String, MethodType> m : c.getValue().getMethods()) {
+                prettyPrintMethod(m.getValue().getDefinition());
+            }
+        }
+    }
     public static String vtableLabel(VaporClass c) {
         return String.format("%s.VTable", c.getName());
     }
     public static void outputVtables(Environment env) {
         // TODO add subtyping
-        for (Map.Entry<String, VaporClass> class_entry : env.getClasses().entrySet()) {
+        for (Map.Entry<String, VaporClass> class_entry : env.getClasses()) {
             if (env.getMainClass() == class_entry.getValue()) {
                 continue;
             }
-            System.out.println(" const " + vtableLabel(class_entry.getValue()));
+            System.out.println("const " + vtableLabel(class_entry.getValue()));
             for (Map.Entry<String, MethodType> method_entry: class_entry.getValue().getMethods()) {
                 System.out.println(String.format("\t:%s", method_entry.getValue().getLabel()));
             }
