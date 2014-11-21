@@ -23,7 +23,8 @@ public class EnvironmentBuilderUtil {
         for (Node n : methodList) {
             MethodDeclaration methodNode = (MethodDeclaration) n;
             String method_name = EnvironmentUtil.identifierToString(methodNode.f2);
-            MethodType curr_method = new MethodType(getVariableList(methodNode.f4.node));
+            String method_type = EnvironmentUtil.syntaxTreeTypeToString(methodNode.f1);
+            MethodType curr_method = new MethodType(method_type, getVariableList(methodNode.f4.node));
             c.addMethod(curr_method, method_name);
         }
     }

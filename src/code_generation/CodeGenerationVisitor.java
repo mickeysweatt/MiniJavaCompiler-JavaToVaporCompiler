@@ -168,9 +168,14 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
             lhs_class = env.getClass(lhs_classname);
             lhs = m.f0.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
             curr_temp = lhs.getNextAvailableTemporary();
-            // TODO
-        } else if (m.f0.f0 instanceof BracketExpression) {
-            m.f0.f0.accept(this, new EnvironmentTemporaryPair(env, ));
+        } else if (m.f0.f0.choice instanceof BracketExpression) {
+            lhs = m.f0.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
+            String lhs_classname = CodeGenerationUtil.classType(m.f0, env);
+            m.f0.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
+            objCode = lhs.getCode();
+            objLoc = lhs.getResultLocation();
+            lhs_class = env.getClass(lhs_classname);
+
         } else {
             System.err.println("unrecognized lhs");
             return null;
@@ -179,7 +184,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         String method_name = EnvironmentUtil.identifierToString(m.f2);
         int offset = lhs_class.getMethodOffset(method_name);
 
-        String callLocation = "t" + curr_temp++;
+        String callLocation = "t." + curr_temp++;
 
         // set up Load load call
         String code = String.format("%s\n", lhs.getCode()) +

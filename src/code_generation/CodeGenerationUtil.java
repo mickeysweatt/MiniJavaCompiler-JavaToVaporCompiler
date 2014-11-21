@@ -15,16 +15,122 @@ public class CodeGenerationUtil {
     public static void produceCompilerReservedMethods(Environment env)
     {
         VaporClass compilerReservedMethods = new VaporClass("class");
-        MethodType m = new MethodType("ArrayAllocate");
+        MethodType m = new MethodType("int[]", "ArrayAllocate");
         m.setDefinition(Array.produceArrayAllocateMethod());
         compilerReservedMethods.addMethod(m, "ArrayAllocate");
 
-        m = new MethodType("produceArrayAccess");
+        m = new MethodType("int[]", "produceArrayAccess");
         m.setDefinition(Array.produceArrayAccess());
         compilerReservedMethods.addMethod(m, "ArrayAccess");
 
         env.addClass(compilerReservedMethods);
     }
+
+    public static void printMethodDefinitions(Environment env) {
+        for (Map.Entry<String, VaporClass> c : env.getClasses()) {
+            for (Map.Entry<String, MethodType> m : c.getValue().getMethods()) {
+                prettyPrintMethod(m.getValue().getDefinition());
+            }
+        }
+    }
+
+    public static String vtableLabel(VaporClass c) {
+        return String.format("%s.VTable", c.getName());
+    }
+
+    public static void outputVtables(Environment env) {
+        // TODO add subtyping
+        for (Map.Entry<String, VaporClass> class_entry : env.getClasses()) {
+            if (env.getMainClass() == class_entry.getValue()) {
+                continue;
+            }
+            System.out.println("const " + vtableLabel(class_entry.getValue()));
+            for (Map.Entry<String, MethodType> method_entry: class_entry.getValue().getMethods()) {
+                System.out.println(String.format("\t:%s", method_entry.getValue().getLabel()));
+            }
+            System.out.println("");
+        }
+    }
+
+    public static String classType(Node n, Environment env) {
+        if (n instanceof PrimaryExpression) {
+            PrimaryExpression p = (PrimaryExpression) n;
+            return classType(p.f0.choice, env);
+        } else if (n instanceof AllocationExpression) {
+            AllocationExpression a = (AllocationExpression) n;
+            return EnvironmentUtil.identifierToString(a.f1);
+        } else if (n instanceof Identifier) {
+            Identifier varID = (Identifier) n;
+            return env.getVariable(EnvironmentUtil.identifierToString(varID)).getType();
+        } else if (n instanceof BracketExpression) {
+            return classType(((BracketExpression) n).f1.f0.choice, env);
+        } else if (n instanceof MessageSend) {
+            // look up lhs class
+            MessageSend m = (MessageSend)n;
+            String lhs_class = classType(m.f0 , env);
+            String methodName =  EnvironmentUtil.identifierToString(m.f2);
+            return env.getClass(lhs_class).getMethod(methodName).getReturnType();
+        }
+
+        System.err.println("Unknown type passed to classType");
+        return null;
+    }
+
+    public static CodeTemporaryPair evaluateParameters(NodeOptional n, String objLoc, EnvironmentTemporaryPair envTemp) {
+        Environment env = envTemp.getEnvironment();
+        int curr_temp = envTemp.getNextAvailableTemporary();
+        String code = "";
+        String parameters = "(" + objLoc;
+
+        if (n.present()) {
+            CodeGenerationVisitor v = new CodeGenerationVisitor();
+            ExpressionList e = (ExpressionList) n.node;
+            CodeTemporaryPair param = e.f0.accept(v, new EnvironmentTemporaryPair(env, curr_temp));
+            code += param.getCode();
+            curr_temp = param.getNextAvailableTemporary();
+            parameters += " " + param.getResultLocation();
+            for (Node node : e.f1.nodes) {
+                param = node.accept(v, new EnvironmentTemporaryPair(env, curr_temp));
+                code += param.getCode();
+                curr_temp = param.getNextAvailableTemporary();
+                parameters += " " + param.getResultLocation();
+            }
+        }
+        parameters += ")";
+        return new CodeTemporaryPair(code, curr_temp, parameters);
+    }
+
+    public static void prettyPrintMethod(String code) {
+        // remove blank lines
+        code = code.replaceAll("(?m)^[ \t]*\r?\n", "");
+        int lvl = 1;
+        // seperate the lines
+        String[] lines = code.split(System.getProperty("line.separator"));
+
+        System.out.println("\n" + lines[0]);
+        for (int i = 1; i < lines.length; ++i)
+        {
+            String line = lines[i];
+            // handle labels
+            if (line.endsWith(":") || line.startsWith("if")) {
+                System.out.println(line);
+                // if end label, return code lvl 1
+                if (line.contains("end")) {
+                    lvl = 1;
+                }
+                // otherwise indent
+                else {
+                    lvl = 2;
+                }
+            } else {
+                for (int j = 0; j < lvl; ++j) {
+                    System.out.print("    ");
+                }
+                System.out.println(line);
+            }
+        }
+    }
+
     public static class  Array {
 
         static String produceArrayAllocateMethod()
@@ -84,100 +190,6 @@ public class CodeGenerationUtil {
             code = "func class.ArrayAccess(a idx)\n" + code;
 
             return code;
-        }
-    }
-
-    public static void printMethodDefinitions(Environment env) {
-        for (Map.Entry<String, VaporClass> c : env.getClasses()) {
-            for (Map.Entry<String, MethodType> m : c.getValue().getMethods()) {
-                prettyPrintMethod(m.getValue().getDefinition());
-            }
-        }
-    }
-    public static String vtableLabel(VaporClass c) {
-        return String.format("%s.VTable", c.getName());
-    }
-    public static void outputVtables(Environment env) {
-        // TODO add subtyping
-        for (Map.Entry<String, VaporClass> class_entry : env.getClasses()) {
-            if (env.getMainClass() == class_entry.getValue()) {
-                continue;
-            }
-            System.out.println("const " + vtableLabel(class_entry.getValue()));
-            for (Map.Entry<String, MethodType> method_entry: class_entry.getValue().getMethods()) {
-                System.out.println(String.format("\t:%s", method_entry.getValue().getLabel()));
-            }
-            System.out.println("");
-        }
-    }
-
-    public static String classType(Node n, Environment env) {
-        if (n instanceof PrimaryExpression) {
-            PrimaryExpression p = (PrimaryExpression) n;
-            return classType(p.f0.choice, env);
-        } else if (n instanceof AllocationExpression) {
-            AllocationExpression a = (AllocationExpression) n;
-            return EnvironmentUtil.identifierToString(a.f1);
-        } else if (n instanceof Identifier) {
-            Identifier varID = (Identifier) n;
-            return env.getVariable(EnvironmentUtil.identifierToString(varID)).getType();
-        }
-        System.err.println("Unknown type passed to classType");
-        return null;
-    }
-
-    public static CodeTemporaryPair evaluateParameters(NodeOptional n, String objLoc, EnvironmentTemporaryPair envTemp) {
-        Environment env = envTemp.getEnvironment();
-        int curr_temp = envTemp.getNextAvailableTemporary();
-        String code = "";
-        String parameters = "(" + objLoc;
-
-        if (n.present()) {
-            CodeGenerationVisitor v = new CodeGenerationVisitor();
-            ExpressionList e = (ExpressionList) n.node;
-            CodeTemporaryPair param = e.f0.accept(v, new EnvironmentTemporaryPair(env, curr_temp));
-            code += param.getCode();
-            curr_temp = param.getNextAvailableTemporary();
-            parameters += " " + param.getResultLocation();
-            for (Node node : e.f1.nodes) {
-                param = node.accept(v, new EnvironmentTemporaryPair(env, curr_temp));
-                code += param.getCode();
-                curr_temp = param.getNextAvailableTemporary();
-                parameters += " " + param.getResultLocation();
-            }
-        }
-        parameters += ")";
-        return new CodeTemporaryPair(code, curr_temp, parameters);
-    }
-
-    public static void prettyPrintMethod(String code) {
-        // remove blank lines
-        code = code.replaceAll("(?m)^[ \t]*\r?\n", "");
-        int lvl = 1;
-        // seperate the lines
-        String[] lines = code.split(System.getProperty("line.separator"));
-
-        System.out.println("\n" + lines[0]);
-        for (int i = 1; i < lines.length; ++i)
-        {
-            String line = lines[i];
-            // handle labels
-            if (line.endsWith(":") || line.startsWith("if")) {
-                System.out.println(line);
-                // if end label, return code lvl 1
-                if (line.contains("end")) {
-                    lvl = 1;
-                }
-                // otherwise indent
-                else {
-                    lvl = 2;
-                }
-            } else {
-                for (int j = 0; j < lvl; ++j) {
-                    System.out.print("    ");
-                }
-                System.out.println(line);
-            }
         }
     }
 }

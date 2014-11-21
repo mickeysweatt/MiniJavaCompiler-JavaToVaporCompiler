@@ -6,16 +6,19 @@ import java.util.LinkedList;
  * Author: Mickey Sweatt
  */
 public class MethodType {
-    private String m_label;
+    private String               m_label;
     private LinkedList<Variable> m_parameters = new LinkedList<Variable>();
-    private String m_definition;
+    private String               m_definition;
+    private String               m_returnType;
 
     // CREATORS
-    public MethodType(String label) {
-        m_label = label;
+    public MethodType(String label, String returnType) {
+        m_label      = label;
+        m_returnType = returnType;
     }
 
-    public MethodType(LinkedList<Variable> parameters) {
+    public MethodType(String returnType, LinkedList<Variable> parameters) {
+        m_returnType = returnType;
         for (Variable parameter : parameters) {
             String parameter_name = parameter.getName();
             String type_name = parameter.getType();
@@ -23,18 +26,14 @@ public class MethodType {
         }
     }
 
-    // MANIPULATORS
-    public void setLabel(String label) {
-        m_label = label;
-    }
-
-    public void setDefinition(String definition) {
-        m_definition = definition;
-    }
-
     // ACCESSORS
     public String getLabel() {
         return m_label;
+    }
+
+    // MANIPULATORS
+    public void setLabel(String label) {
+        m_label = label;
     }
 
     public LinkedList<Variable> getParameters() {
@@ -47,5 +46,11 @@ public class MethodType {
     public String getDefinition() {
         return m_definition;
     }
+
+    public void setDefinition(String definition) {
+        m_definition = definition;
+    }
+
+    public String getReturnType() { return m_returnType; }
 
 }
