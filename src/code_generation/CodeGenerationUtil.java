@@ -73,7 +73,7 @@ public class CodeGenerationUtil {
             // next bounds check
             code += String.format("%s = LtS(idx %s)\n",i_loc, len_loc)  +
                     String.format("if %s goto :%s\n", i_loc, assignLabel) +
-                    "Error(\"Index out of bounds\")\n";
+                    "Error(\"array index out of bounds\")\n";
 
             // next compute the offset
             code += String.format("%s:\n",             assignLabel)           +

@@ -63,17 +63,17 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         methodDeclarations = c.f4.nodes;
 
         curr_class = env.getClass(EnvironmentUtil.classname(c));
-        Environment localEnv = EnvironmentBuilderUtil.buildLocalEnvironment(c, env);
+        Environment classEnv  = EnvironmentBuilderUtil.buildLocalEnvironment(c, env);
 
         EnvironmentTemporaryPair localEnvTempPair;
 
         for (Node n : methodDeclarations) {
+            Environment methodEnv;
             MethodDeclaration method = (MethodDeclaration) n;
             MethodType method_type = curr_class.getMethod(EnvironmentUtil.identifierToString(method.f2));
             // get definition of method
-
-            // TODO: ask about labels!! (globally unique)
-            localEnvTempPair = new EnvironmentTemporaryPair(localEnv, curr_temp);
+            methodEnv = EnvironmentBuilderUtil.buildLocalEnvironment(method, method_type, classEnv);
+            localEnvTempPair = new EnvironmentTemporaryPair(methodEnv, curr_temp);
             curr_pair = n.accept(this, localEnvTempPair);
             curr_temp = curr_pair.getNextAvailableTemporary();
 
@@ -136,7 +136,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         VaporClass lhs_class;
         CodeTemporaryPair lhs;
 
-
+        // try to resolve lhs
         if (m.f0.f0.choice instanceof AllocationExpression) {
             lhs = m.f0.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
             curr_temp = lhs.getNextAvailableTemporary();
@@ -168,6 +168,9 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
             lhs_class = env.getClass(lhs_classname);
             lhs = m.f0.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
             curr_temp = lhs.getNextAvailableTemporary();
+            // TODO
+        } else if (m.f0.f0 instanceof BracketExpression) {
+            m.f0.f0.accept(this, new EnvironmentTemporaryPair(env, ));
         } else {
             System.err.println("unrecognized lhs");
             return null;
@@ -402,7 +405,12 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
 
     public CodeTemporaryPair visit(ThisExpression e, EnvironmentTemporaryPair envTemp) {
         Variable thisVar = envTemp.getEnvironment().getVariable("this");
-        return new CodeTemporaryPair("", envTemp.getNextAvailableTemporary(), thisVar.getLocation());
+        int curr_temp = envTemp.getNextAvailableTemporary();
+        if (null ==  thisVar) {
+            thisVar = new Variable("this", curr_class.getName(), "t." + curr_temp, Variable.SCOPE.INSTANCE_VAR);
+            curr_temp++;
+        }
+        return new CodeTemporaryPair("", curr_temp, thisVar.getLocation());
     }
 
     public CodeTemporaryPair visit(TimesExpression e, EnvironmentTemporaryPair envTemp) {
@@ -460,7 +468,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
                                                                      lhs.getResultLocation(),
                                                                      index.getResultLocation());
         // next do the thing!
-              code += String.format("[%s] = %s\n"      , i_loc, rhs.getResultLocation());
+        code += String.format("[%s] = %s\n"      , i_loc, rhs.getResultLocation());
 
         return new CodeTemporaryPair(code, curr_temp + 1);
     }
