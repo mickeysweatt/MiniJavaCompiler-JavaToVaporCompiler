@@ -70,6 +70,8 @@ public class CodeGenerationUtil {
             String lhs_class = classType(m.f0 , env);
             String methodName =  EnvironmentUtil.identifierToString(m.f2);
             return env.getClass(lhs_class).getMethod(methodName).getReturnType();
+        } else if ( n instanceof ThisExpression) {
+            return env.getVariable("this").getType();
         }
 
         System.err.println("Unknown type passed to classType");
