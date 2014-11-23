@@ -15,8 +15,9 @@ import java.util.Set;
 
 public class VaporClass {
     // DATA
-    private LinkedHashSet<Variable> m_instanceVars = new LinkedHashSet<Variable>();
-    private LinkedHashMap<String, MethodType> m_methods = new LinkedHashMap<String, MethodType>();
+    private LinkedHashSet<Variable>           m_instanceVars = new LinkedHashSet<Variable>();
+    private LinkedHashMap<String, MethodType> m_methods      = new LinkedHashMap<String, MethodType>();
+    private LinkedHashMap<String, VaporClass> m_supers       = new LinkedHashMap<String, VaporClass>();
     private String m_name = "";
 
     // CREATORS
@@ -40,6 +41,14 @@ public class VaporClass {
         m_methods.put(method_name, m);
     }
 
+    public void addSuper(String super_name) {
+        m_supers.put(super_name, null);
+    }
+
+    public void addSuper(VaporClass v) {
+        m_supers.put(v.getName(), v);
+    }
+
     // ACCESSORS
     public String getName() {
         return m_name;
@@ -59,6 +68,10 @@ public class VaporClass {
         // zero out variables
         code += String.format("[%s] = :%s\n", temporary, CodeGenerationUtil.vtableLabel(this));
         return new CodeTemporaryPair(code, objectAddressLocation + 1, temporary);
+    }
+
+    public LinkedHashMap<String, VaporClass> getSuper() {
+        return m_supers;
     }
 
 //    public Variable getVariable(String varName) {

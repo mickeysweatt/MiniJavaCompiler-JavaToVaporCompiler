@@ -2,8 +2,7 @@ package environment;
 
 import syntaxtree.*;
 
-import java.util.LinkedList;
-import java.util.Vector;
+import java.util.*;
 
 /**
  * Author: Michael Sweatt
@@ -95,21 +94,32 @@ public class EnvironmentBuilderUtil {
         }
         return localEnv;
     }
-}
 
 
-/*
-    public static void flattenSubtyping(GlobalEnvironment env) {
-        Map<String, ClassType> classes = env.getClasses();
+    public static void flattenSubtyping(Environment env) {
+        Set<Map.Entry<String, VaporClass>> classes = env.getClasses();
 
-        for (Map.Entry<String, ClassType> pair : classes.entrySet()) {
-            ClassType cl = pair.getValue();
-            getSuperClasses(cl, null);
+        for (Map.Entry<String, VaporClass> pair : classes) {
+            VaporClass cl = pair.getValue();
+            getSuperClasses(cl, env);
         }
-        evaluateOverridenMethods(env);
-        flattenInstanceVars(env);
+//        evaluateOverridenMethods(env);
+//        flattenInstanceVars(env);
     }
 
+    protected static void getSuperClasses(VaporClass cl, Environment env) {
+       // leaf class
+        LinkedHashMap<String, VaporClass> supers = cl.getSuper();
+        if (0 == supers.size()) {
+           return;
+       }
+        // only direct super has been added
+        for (Map.Entry<String, VaporClass> entry : supers.entrySet()) {
+            getSuperClasses(entry.getValue(), env);
+
+        }
+    }
+/*
     public static void flattenInstanceVars(GlobalEnvironment env) {
         Map<String, ClassType> classes = env.getClasses();
         // for each class
@@ -389,3 +399,4 @@ public class EnvironmentBuilderUtil {
 
 
 */
+}
