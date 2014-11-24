@@ -86,7 +86,7 @@ public class CodeGenerationUtil {
 
             // handle the first parameter
             CodeTemporaryPair param = e.f0.accept(v, new EnvironmentTemporaryPair(env, curr_temp));
-            code += param.getCode();
+
             curr_temp = param.getNextAvailableTemporary();
             String paramLoc  = param.getResultLocation();
             String paramCode = param.getCode();
@@ -216,7 +216,7 @@ public class CodeGenerationUtil {
         static String produceArrayAccess()
         {
             int         curr_temp   = 1;
-            //String      resultLoc  = "t." + curr_temp;
+            String      nullLabel   = "NULL_"   + curr_temp;
             String      lenLabel    = "LENGTH_" + curr_temp;
             String      assignLabel = "ASSIGN_" + curr_temp;
 
@@ -228,8 +228,11 @@ public class CodeGenerationUtil {
             // start with code to check for a negative index
             code += String.format("%s = LtS(-1 idx)\n" +
                     "if %s goto :%s\n" +
-                    "Error(\"Negative index\")\n", i_loc, i_loc, lenLabel);
-
+                    "Error(\"Negative index\")\n", i_loc, i_loc, nullLabel);
+            // add code to see if the array pointer is null
+            code += String.format("%s:\n", nullLabel) +
+                    String.format("if a goto :%s\n", lenLabel) +
+                                  "Error(\"null pointer\")\n";
             // add code to get length
             code += String.format("%s:\n" +
                     "%s = [a]\n", lenLabel, len_loc);

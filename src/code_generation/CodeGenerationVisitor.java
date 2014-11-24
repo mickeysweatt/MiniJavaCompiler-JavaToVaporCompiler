@@ -115,6 +115,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         Environment env = envTemp.getEnvironment();
         int curr_temp = envTemp.getNextAvailableTemporary();
         String resultLoc = "t." + curr_temp++;
+        String null_label = "null_" + curr_temp++;
         String objLoc;
         String objCode;
 
@@ -122,7 +123,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         CodeTemporaryPair lhs;
 
         // compile lhs
-        lhs = m.f0.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
+        lhs = m.f0.accept(this, new EnvironmentTemporaryPair(env, curr_temp + 1));
         curr_temp = lhs.getNextAvailableTemporary();
         // get the reciever class
         String lhs_classname = CodeGenerationUtil.classType(m.f0, env);
@@ -138,7 +139,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
             objCode = "";
         } else if (m.f0.f0.choice instanceof BracketExpression) {
             lhs_class = env.getClass(lhs_classname);
-            objCode = lhs.getCode();
+            objCode = "";
         } else {
             System.err.println("unrecognized lhs");
             return null;
@@ -150,9 +151,13 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         // set up Load load call
         String callLocation = "t." + curr_temp++;
         String code = String.format("%s\n", lhs.getCode()) +
-                      String.format("%s\n", objCode) +
-                      String.format("%s = [%s]\n", callLocation, objLoc) +
-                      String.format("%s = [%s + %d]\n", callLocation, callLocation, offset);
+                String.format("%s\n", objCode) +
+                // put in null check
+                String.format("if %s goto :%s\n", objLoc, null_label) +
+                                    "Error(\"null pointer\")\n" +
+                String.format("%s:\n", null_label) +
+                String.format("%s = [%s]\n", callLocation, objLoc) +
+                String.format("%s = [%s + %d]\n", callLocation, callLocation, offset);
         // compile parameters
         CodeTemporaryPair params = CodeGenerationUtil.evaluateParameters(this, m.f4, objLoc, new EnvironmentTemporaryPair(env, curr_temp));
 
@@ -220,8 +225,8 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         curr_temp = rhs.getNextAvailableTemporary();
 
         String code = String.format("%s\n", rhs.getCode()) +
-                      String.format("%s\n", lhs.getCode()) +
-                      String.format("%s = %s\n", lhs.getResultLocation(), rhs.getResultLocation());
+                String.format("%s\n", lhs.getCode()) +
+                String.format("%s = %s\n", lhs.getResultLocation(), rhs.getResultLocation());
 
         return new CodeTemporaryPair(code, curr_temp);
     }
@@ -238,21 +243,13 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         thenBranch = i.f4.accept(this, new EnvironmentTemporaryPair(env, condition.getNextAvailableTemporary()));
         elseBranch = i.f6.accept(this, new EnvironmentTemporaryPair(env, thenBranch.getNextAvailableTemporary()));
 
-        code = String.format("%s\n" +
-                        "if0 %s goto :%s_else\n" +
-                        "%s\n" +
-                        "goto :%s_end\n" +
-                        "%s_else:\n" +
-                        "%s\n" +
-                        "%s_end:\n",
-                        condition.getCode(),
-                        condition.getResultLocation(),
-                        tag,
-                        thenBranch.getCode(),
-                        tag,
-                        tag,
-                        elseBranch.getCode(),
-                        tag);
+        code = String.format("%s\n"                    , condition.getCode()) +
+                String.format("if0 %s goto :%s_else\n" , condition.getResultLocation(), tag) +
+                String.format("%s\n"                   , thenBranch.getCode()) +
+                String.format("goto :%s_end\n"         , tag) +
+                String.format("%s_else:\n"             , tag) +
+                String.format("%s\n"                   , elseBranch.getCode()) +
+                String.format("%s_end:\n"              , tag);
         return new CodeTemporaryPair(code, elseBranch.getNextAvailableTemporary());
     }
 
@@ -273,19 +270,12 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         curr_temp++;
         CodeTemporaryPair conditon = w.f2.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
         CodeTemporaryPair body     = w.f4.accept(this, new EnvironmentTemporaryPair(env, conditon.getNextAvailableTemporary()));
-        String code = String.format("goto :%s\n" +
-                                    "%s:\n" +
-                                    "%s\n" +
-                                    "%s:\n" +
-                                    "%s\n" +
-                                    "if %s goto :%s\n", conditonTag,
-                                                      bodyTag,
-                                                      body.getCode(),
-                                                      conditonTag,
-                                                      conditon.getCode(),
-                                                      conditon.getResultLocation(),
-                                                      bodyTag);
-        //System.out.println(code);
+        String code = String.format("goto :%s\n"      , conditonTag)        +
+                String.format("%s:\n"           , bodyTag)            +
+                String.format("%s\n"            , body.getCode())     +
+                String.format("%s:\n"           , conditonTag)        +
+                String.format("%s\n"            , conditon.getCode()) +
+                String.format("if %s goto :%s\n", conditon.getResultLocation(), bodyTag);
         return new CodeTemporaryPair(code, body.getNextAvailableTemporary());
     }
 
@@ -357,13 +347,13 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         CodeTemporaryPair left = e.f0.accept(this, new EnvironmentTemporaryPair(env, curr_temp + 1));
         CodeTemporaryPair right = e.f2.accept(this, new EnvironmentTemporaryPair(env, left.getNextAvailableTemporary()));
 
-        String code = String.format("%s\n" +
-                        "%s\n" +
-                        "%s = Sub(%s %s)\n", left.getCode(),
-                right.getCode(),
-                result_location,
-                left.getResultLocation(),
-                right.getResultLocation());
+        String code = String.format("%s\n", left.getCode()) +
+                      String.format("%s\n", right.getCode()) +
+                      String.format("%s = Sub(%s %s)\n", result_location,
+                                                         left.getResultLocation(),
+                                                         right.getResultLocation());
+
+
 
         return new CodeTemporaryPair(code, right.getNextAvailableTemporary(), result_location);
     }
@@ -378,13 +368,13 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         String set_label = "set" + curr_temp++;
         String set_close = set_label + "_end";
         String code = String.format("%s\n", intermediateValue.getCode()) +
-                      String.format("%s = Eq(0 %s)\n"   , location, intermediateValue.getResultLocation()) +
-                      String.format("if %s goto :%s\n" , location, set_label) +
-                      String.format("%s = 0\n"          , location) +
-                      String.format("goto :%s\n"        , set_close) +
-                      String.format("%s:\n"             , set_label) +
-                      String.format("%s = 1\n"          , location) +
-                      String.format("%s:\n"             , set_close);
+                String.format("%s = Eq(0 %s)\n"   , location, intermediateValue.getResultLocation()) +
+                String.format("if %s goto :%s\n"  , location, set_label) +
+                String.format("%s = 0\n"          , location) +
+                String.format("goto :%s\n"        , set_close) +
+                String.format("%s:\n"             , set_label) +
+                String.format("%s = 1\n"          , location) +
+                String.format("%s:\n"             , set_close);
         return new CodeTemporaryPair(code, curr_temp, location);
     }
 
@@ -426,10 +416,10 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         String resultLoc = "t." + curr_temp++;
         CodeTemporaryPair arraySize =  a.f3.accept(this, envTemp);
         String code = String.format("%s\n" +
-                                    "%s =  call :class.ArrayAllocate(%s)\n",
-                                        arraySize.getCode(),
-                                        resultLoc,
-                                        arraySize.getResultLocation());
+                        "%s =  call :class.ArrayAllocate(%s)\n",
+                arraySize.getCode(),
+                resultLoc,
+                arraySize.getResultLocation());
 
         return new CodeTemporaryPair(code, curr_temp, resultLoc);
     }
@@ -447,12 +437,12 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
 
         // Start of with evaluating all terms
         String code = String.format("%s\n", lhs.getCode()) +
-                      String.format("%s\n", index.getCode()) +
-                      String.format("%s\n", rhs.getCode());
+                String.format("%s\n", index.getCode()) +
+                String.format("%s\n", rhs.getCode());
 
         code += String.format("%s = call :class.ArrayAccess(%s %s)\n", i_loc,
-                                                                       lhs.getResultLocation(),
-                                                                       index.getResultLocation());
+                lhs.getResultLocation(),
+                index.getResultLocation());
         // next do the thing!
         code += String.format("[%s] = %s\n"      , i_loc, rhs.getResultLocation());
 
@@ -467,9 +457,9 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         CodeTemporaryPair lhs =  a.f0.accept(this, new EnvironmentTemporaryPair(env, curr_temp));
         curr_temp = lhs.getNextAvailableTemporary();
         String code = String.format("%s\n" +
-                                    "%s = [%s]", lhs.getCode(),
-                                                 resultLoc,
-                                                 lhs.getResultLocation());
+                        "%s = [%s]", lhs.getCode(),
+                resultLoc,
+                lhs.getResultLocation());
         return new CodeTemporaryPair(code, curr_temp, resultLoc);
     }
 
