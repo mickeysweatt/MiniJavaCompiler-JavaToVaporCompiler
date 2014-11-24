@@ -6,7 +6,6 @@ import syntaxtree.*;
 import visitor.GJDepthFirst;
 
 import java.util.List;
-import java.util.Vector;
 
 /**
  * Author: Michael Sweatt
@@ -55,33 +54,17 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
 
     public CodeTemporaryPair visit(ClassDeclaration c, EnvironmentTemporaryPair envTemp) {
         // visit the local methods
-        Environment env;
-        CodeTemporaryPair curr_pair;
-        Vector<Node> methodDeclarations;
-        int curr_temp = envTemp.getNextAvailableTemporary();
-        env = envTemp.getEnvironment();
-        methodDeclarations = c.f4.nodes;
-
+        Environment env = envTemp.getEnvironment();
         curr_class = env.getClass(EnvironmentUtil.classname(c));
-        Environment classEnv  = EnvironmentBuilderUtil.buildLocalEnvironment(c, env);
+        return CodeGenerationUtil.compileClass(this, c, c.f4.nodes, envTemp);
+    }
 
-        EnvironmentTemporaryPair localEnvTempPair;
 
-        for (Node n : methodDeclarations) {
-            Environment methodEnv;
-            MethodDeclaration method = (MethodDeclaration) n;
-            MethodType method_type = curr_class.getMethod(EnvironmentUtil.identifierToString(method.f2));
-            // get definition of method
-            methodEnv = EnvironmentBuilderUtil.buildLocalEnvironment(method, method_type, classEnv);
 
-            localEnvTempPair = new EnvironmentTemporaryPair(methodEnv, curr_temp);
-            curr_pair = n.accept(this, localEnvTempPair);
-            curr_temp = curr_pair.getNextAvailableTemporary();
-
-            //CodeGenerationUtil.prettyPrintMethod(curr_pair.getCode());
-            method_type.setDefinition(curr_pair.getCode());
-        }
-        return new CodeTemporaryPair("", curr_temp);
+    public CodeTemporaryPair visit(ClassExtendsDeclaration c, EnvironmentTemporaryPair envTemp) {
+        Environment env = envTemp.getEnvironment();
+        curr_class = env.getClass(EnvironmentUtil.classname(c));
+        return CodeGenerationUtil.compileClass(this, c, c.f6.nodes, envTemp);
     }
 
     public CodeTemporaryPair visit(MethodDeclaration d, EnvironmentTemporaryPair envTemp) {
@@ -146,20 +129,15 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
         lhs_class = env.getClass(lhs_classname);
 
         // handle  different types of lhs
+        objLoc = lhs.getResultLocation();
         if (m.f0.f0.choice instanceof AllocationExpression) {
-            objLoc = lhs.getResultLocation();
             objCode = "";
         } else if (m.f0.f0.choice instanceof ThisExpression) {
-            objLoc = env.getVariable("this").getLocation();
             objCode = String.format("%s = this\n", objLoc);
         } else if (m.f0.f0.choice instanceof Identifier) {
-            Identifier id = (Identifier) m.f0.f0.choice;
-            String varName = EnvironmentUtil.identifierToString(id);
-            objLoc = env.getVariable(varName).getLocation();
             objCode = "";
         } else if (m.f0.f0.choice instanceof BracketExpression) {
             lhs_class = env.getClass(lhs_classname);
-            objLoc = lhs.getResultLocation();
             objCode = lhs.getCode();
         } else {
             System.err.println("unrecognized lhs");
@@ -176,7 +154,7 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
                       String.format("%s = [%s]\n", callLocation, objLoc) +
                       String.format("%s = [%s + %d]\n", callLocation, callLocation, offset);
         // compile parameters
-        CodeTemporaryPair params = CodeGenerationUtil.evaluateParameters(m.f4, objLoc, new EnvironmentTemporaryPair(env, curr_temp));
+        CodeTemporaryPair params = CodeGenerationUtil.evaluateParameters(this, m.f4, objLoc, new EnvironmentTemporaryPair(env, curr_temp));
 
         code += String.format("%s\n" +
                 "%s =  call %s %s", params.getCode(), resultLoc, callLocation, params.getResultLocation());
@@ -528,7 +506,6 @@ public class CodeGenerationVisitor extends GJDepthFirst<CodeTemporaryPair, Envir
             return null;
         }
 
-        // FIXME...probably?
         String code;
         if (Variable.SCOPE.INSTANCE_VAR == v.getScope()) {
             location = "t." + curr_temp++;

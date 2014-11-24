@@ -4,6 +4,7 @@ import environment.*;
 import syntaxtree.*;
 
 import java.util.Map;
+import java.util.Vector;
 
 /**
  * Author: Michael Sweatt
@@ -74,14 +75,13 @@ public class CodeGenerationUtil {
         return null;
     }
 
-    public static CodeTemporaryPair evaluateParameters(NodeOptional n, String objLoc, EnvironmentTemporaryPair envTemp) {
+    public static CodeTemporaryPair evaluateParameters(CodeGenerationVisitor v, NodeOptional n, String objLoc, EnvironmentTemporaryPair envTemp) {
         Environment env = envTemp.getEnvironment();
         int curr_temp = envTemp.getNextAvailableTemporary();
         String code = "";
         String parameters = "(" + objLoc;
 
         if (n.present()) {
-            CodeGenerationVisitor v = new CodeGenerationVisitor();
             ExpressionList e = (ExpressionList) n.node;
 
             // handle the first parameter
@@ -134,6 +134,36 @@ public class CodeGenerationUtil {
                 System.out.println(line);
             }
         }
+    }
+
+    public static CodeTemporaryPair compileClass(CodeGenerationVisitor    v,
+                                                 Node                     c,
+                                                 Vector<Node>             methodDeclarations,
+                                                 EnvironmentTemporaryPair envTemp)
+    {
+        // visit the local methods
+        Environment env;
+        CodeTemporaryPair curr_pair;
+        int curr_temp = envTemp.getNextAvailableTemporary();
+        env = envTemp.getEnvironment();
+
+        Environment classEnv  = EnvironmentBuilderUtil.buildLocalEnvironment(c, env);
+        EnvironmentTemporaryPair localEnvTempPair;
+        for (Node n : methodDeclarations) {
+            Environment methodEnv;
+            MethodDeclaration method = (MethodDeclaration) n;
+            MethodType method_type = v.curr_class.getMethod(EnvironmentUtil.identifierToString(method.f2));
+            // get definition of method
+            methodEnv = EnvironmentBuilderUtil.buildLocalEnvironment(method, method_type, classEnv);
+
+            localEnvTempPair = new EnvironmentTemporaryPair(methodEnv, curr_temp);
+            curr_pair = n.accept(v, localEnvTempPair);
+            curr_temp = curr_pair.getNextAvailableTemporary();
+
+            //CodeGenerationUtil.prettyPrintMethod(curr_pair.getCode());
+            method_type.setDefinition(curr_pair.getCode());
+        }
+        return new CodeTemporaryPair("", curr_temp);
     }
 
     public static CodeTemporaryPair handleLHSLocs(Node n, EnvironmentTemporaryPair envTemp) {

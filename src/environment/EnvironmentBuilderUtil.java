@@ -68,7 +68,31 @@ public class EnvironmentBuilderUtil {
         return localEnv;
     }
 
+    public static Environment buildLocalEnvironment(Node c, Environment env) {
+        if (c instanceof ClassExtendsDeclaration) {
+            return buildLocalEnvironment((ClassExtendsDeclaration)c, env);
+        }
+        else if (c instanceof  ClassDeclaration) {
+            return buildLocalEnvironment((ClassDeclaration)c, env);
+        }
+        else {
+            System.err.println("Unrecongnized type");
+            return null;
+        }
+    }
+
     public static Environment buildLocalEnvironment(ClassDeclaration d, Environment env) {
+        Environment localEnv = new Environment(env);
+        String class_name = EnvironmentUtil.classname(d);
+        VaporClass curr_class = localEnv.getClass(class_name);
+
+        for (Variable v : curr_class.getVariables()) {
+            localEnv.addVarsInScope(v);
+        }
+        return localEnv;
+    }
+
+    public static Environment buildLocalEnvironment(ClassExtendsDeclaration d, Environment env) {
         Environment localEnv = new Environment(env);
         String class_name = EnvironmentUtil.classname(d);
         VaporClass curr_class = localEnv.getClass(class_name);
