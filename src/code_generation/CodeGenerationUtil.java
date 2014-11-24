@@ -1,9 +1,6 @@
 package code_generation;
 
-import environment.Environment;
-import environment.EnvironmentUtil;
-import environment.MethodType;
-import environment.VaporClass;
+import environment.*;
 import syntaxtree.*;
 
 import java.util.Map;
@@ -73,7 +70,6 @@ public class CodeGenerationUtil {
         } else if ( n instanceof ThisExpression) {
             return env.getVariable("this").getType();
         }
-
         System.err.println("Unknown type passed to classType");
         return null;
     }
@@ -87,15 +83,22 @@ public class CodeGenerationUtil {
         if (n.present()) {
             CodeGenerationVisitor v = new CodeGenerationVisitor();
             ExpressionList e = (ExpressionList) n.node;
+
+            // handle the first parameter
             CodeTemporaryPair param = e.f0.accept(v, new EnvironmentTemporaryPair(env, curr_temp));
             code += param.getCode();
             curr_temp = param.getNextAvailableTemporary();
-            parameters += " " + param.getResultLocation();
+            String paramLoc  = param.getResultLocation();
+            String paramCode = param.getCode();
+            code += paramCode;
+            parameters += " " + paramLoc;
             for (Node node : e.f1.nodes) {
                 param = node.accept(v, new EnvironmentTemporaryPair(env, curr_temp));
-                code += param.getCode();
+                paramLoc  = param.getResultLocation();
+                paramCode = param.getCode();
+                code += paramCode;
                 curr_temp = param.getNextAvailableTemporary();
-                parameters += " " + param.getResultLocation();
+                parameters += " " + paramLoc;
             }
         }
         parameters += ")";
@@ -131,6 +134,29 @@ public class CodeGenerationUtil {
                 System.out.println(line);
             }
         }
+    }
+
+    public static CodeTemporaryPair handleLHSLocs(Node n, EnvironmentTemporaryPair envTemp) {
+        Environment env = envTemp.getEnvironment();
+        int curr_temp   = envTemp.getNextAvailableTemporary();
+        String location;
+
+        Variable v = env.getVariable(EnvironmentUtil.identifierToString((Identifier)n));
+        if (null == v) {
+            System.err.println("bad identifier passed");
+            return null;
+        }
+
+        String code;
+        if (Variable.SCOPE.INSTANCE_VAR == v.getScope()) {
+            curr_temp++;
+            location = String.format("[this + %s]", v.getLocation());
+            code = "";
+        } else {
+            code = "";
+            location = v.getLocation();
+        }
+        return new CodeTemporaryPair(code, curr_temp, location);
     }
 
     public static class  Array {

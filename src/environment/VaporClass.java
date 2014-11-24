@@ -17,7 +17,7 @@ public class VaporClass {
     // DATA
     private LinkedHashSet<Variable>           m_instanceVars = new LinkedHashSet<Variable>();
     private LinkedHashMap<String, MethodType> m_methods      = new LinkedHashMap<String, MethodType>();
-    private LinkedHashMap<String, VaporClass> m_supers       = new LinkedHashMap<String, VaporClass>();
+    private LinkedHashSet<VaporClass>         m_supers       = new LinkedHashSet<VaporClass>();
     private String m_name = "";
 
     // CREATORS
@@ -41,12 +41,12 @@ public class VaporClass {
         m_methods.put(method_name, m);
     }
 
-    public void addSuper(String super_name) {
-        m_supers.put(super_name, null);
+    public void addSuper(VaporClass v) {
+        m_supers.add(v);
     }
 
-    public void addSuper(VaporClass v) {
-        m_supers.put(v.getName(), v);
+    public void setInstanceVars(LinkedHashSet<Variable> vars) {
+        m_instanceVars = vars;
     }
 
     // ACCESSORS
@@ -56,6 +56,10 @@ public class VaporClass {
 
     public Set<Map.Entry<String, MethodType>> getMethods() {
         return m_methods.entrySet();
+    }
+
+    public void setMethods(LinkedHashMap<String, MethodType> methods) {
+        m_methods = methods;
     }
 
     public int getSize() {
@@ -70,9 +74,22 @@ public class VaporClass {
         return new CodeTemporaryPair(code, objectAddressLocation + 1, temporary);
     }
 
-    public LinkedHashMap<String, VaporClass> getSuper() {
+    public VaporClass getSuper() {
+
+        if (m_supers.size() < 1) {
+            return null;
+        }
+        return m_supers.iterator().next();
+    }
+
+    public LinkedHashSet<VaporClass> getHierarchy() {
         return m_supers;
     }
+
+    public void setHierarchy(LinkedHashSet<VaporClass> supers) {
+        m_supers = supers;
+    }
+
 
 //    public Variable getVariable(String varName) {
 //        Variable rval = null;
